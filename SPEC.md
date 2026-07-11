@@ -1,8 +1,5 @@
 # SPEC: `tubelens` — content-aware YouTube search
 
-> Working name: **tubelens** (rename freely; referred to as "the tool" below).
-> Status: v1 spec, ready for implementation handoff.
-
 ---
 
 ## 0. What this is and how it's distributed
