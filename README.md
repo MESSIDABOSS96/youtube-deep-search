@@ -10,6 +10,7 @@
   <p align="center">
     A better way to search YouTube. Naturally describe what you're looking and it returns videos by what's
     actually <em>said</em> in the transcript, not the title.
+  </p> 
     <br />
     <a href="#getting-started"><strong>Get started »</strong></a>
     <br />
