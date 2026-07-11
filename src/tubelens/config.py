@@ -44,6 +44,30 @@ PROVIDER_KEYS: dict[str, str | None] = {
 }
 
 
+# Where to create each key, shown inline when a key is missing so a first-time user knows
+# what to do next instead of hitting a dead end. Free tiers noted where they exist.
+KEY_SETUP_HELP: dict[str, str] = {
+    "YOUTUBE_API_KEY": (
+        "Get one free at https://console.cloud.google.com/apis/credentials "
+        "(enable 'YouTube Data API v3')."
+    ),
+    "ANTHROPIC_API_KEY": "Get one at https://console.anthropic.com/settings/keys",
+    "OPENAI_API_KEY": "Get one at https://platform.openai.com/api-keys",
+    "GEMINI_API_KEY": "Get one free at https://aistudio.google.com/apikey",
+    "GROQ_API_KEY": "Get one free at https://console.groq.com/keys",
+    "MISTRAL_API_KEY": "Get one at https://console.mistral.ai/api-keys",
+    "COHERE_API_KEY": "Get one at https://dashboard.cohere.com/api-keys",
+    "NVIDIA_NIM_API_KEY": (
+        "Get one free at https://build.nvidia.com (open a model, then 'Get API Key')."
+    ),
+}
+
+
+def key_setup_help(env_var: str) -> str:
+    """A short 'here's where to create this key' hint, or '' if we don't have one."""
+    return KEY_SETUP_HELP.get(env_var, "")
+
+
 def deep_read_count(results: int) -> int:
     """SPEC §6.4: max(15, results + 5) so 'more results' stays 'more quality results'."""
     return max(15, results + 5)

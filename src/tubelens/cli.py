@@ -38,6 +38,7 @@ from .config import (
     ConfigError,
     available_model_choices,
     deep_read_count,
+    key_setup_help,
     load_config,
     no_model_message,
     required_key_for_model,
@@ -464,11 +465,14 @@ def _offer_to_save_key(env_var: str) -> bool:
     if not sys.stdin.isatty():
         return False
     rc = shell_rc_file()
-    console.print(f"\n[bold]{env_var}[/bold] isn't set.")
+    console.print(f"\n[bold]{env_var}[/bold] isn't set yet.")
+    help_line = key_setup_help(env_var)
+    if help_line:
+        console.print(f"  [dim]Don't have one? {help_line}[/dim]")
     if rc is not None:
         console.print(
-            f"  Paste it to save it to [cyan]{rc}[/cyan] (loaded by every new terminal), "
-            "or press Enter to skip and set it yourself."
+            f"  Paste it here to save it to [cyan]{rc}[/cyan] (loaded by every new "
+            "terminal), or press Enter to skip and set it yourself."
         )
     else:
         console.print(
