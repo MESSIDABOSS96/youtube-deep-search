@@ -34,6 +34,34 @@ def test_deep_read_count_never_below_results():
     assert deep_read_count(3) == 15
 
 
+def test_available_model_choices_reflects_keys(monkeypatch):
+    """SPEC §8: the picker offers only providers the user actually has a key for."""
+    import shutil
+
+    from tubelens import config
+
+    # Clear every provider key, then set only Anthropic's.
+    for env_var in config.PROVIDER_KEYS.values():
+        if env_var:
+            monkeypatch.delenv(env_var, raising=False)
+    monkeypatch.setattr(shutil, "which", lambda _: None)  # pretend Ollama not installed
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
+    choices = config.available_model_choices()
+    assert choices and all(m.startswith("anthropic/") for m, _ in choices)
+
+    # Adding an NVIDIA key surfaces its models too.
+    monkeypatch.setenv("NVIDIA_NIM_API_KEY", "y")
+    both = {m for m, _ in config.available_model_choices()}
+    assert any(m.startswith("anthropic/") for m in both)
+    assert any(m.startswith("nvidia_nim/") for m in both)
+
+    # With no keys and no Ollama, there are no choices.
+    monkeypatch.delenv("ANTHROPIC_API_KEY")
+    monkeypatch.delenv("NVIDIA_NIM_API_KEY")
+    assert config.available_model_choices() == []
+
+
 def _mk_candidate(
     vid: str, transcript_text: str = "the pre-launch waitlist tactic growth"
 ) -> Candidate:

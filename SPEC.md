@@ -108,9 +108,9 @@ Options:
   --results N         size of the deep-read pool; all deep-read videos are shown,
                       grouped by tier (default 10)
   --scan N            max candidate videos to scan (default 80, hard cap 200)
-  --model MODEL       LLM for deep ranking + synthesis, litellm format.
-                      REQUIRED — no default (e.g. nvidia_nim/meta/llama-3.1-8b-instruct,
-                      ollama/llama3.1, anthropic/claude-haiku-4-5)
+  --model MODEL       LLM for deep ranking + synthesis, litellm format. No default —
+                      if omitted, an interactive picker lists models for the providers
+                      whose keys are present (or the no-model message when non-interactive)
   --triage-model M    LLM for stage-1 triage (default: same as --model)
   --no-brief          skip the synthesized playbook section
   --no-clarify        never ask clarifying questions
@@ -366,12 +366,19 @@ visual minimalism.
 - Use **litellm** as the provider abstraction. `--model` accepts any litellm model
   string — `nvidia_nim/...`, `ollama/...`, `anthropic/...`, `openai/...`, `gemini/...`,
   and more.
-- **No default model — the user must choose one** (via `--model` or `TUBELENS_MODEL`).
-  This is deliberate: defaulting to a specific vendor would (a) quietly send a stranger's
-  first query to a provider they didn't pick, possibly spending money, and (b) signal an
-  endorsement the project doesn't intend. Running without a model stops immediately with
-  a friendly message listing the free (NVIDIA / Ollama) and paid options. Provider-
-  neutrality is a stance, not an omission.
+- **No default model — the user chooses one** (via `--model` or `TUBELENS_MODEL`). This is
+  deliberate: defaulting to a specific vendor would (a) quietly send a stranger's first
+  query to a provider they didn't pick, possibly spending money, and (b) signal an
+  endorsement the project doesn't intend. Provider-neutrality is a stance, not an omission.
+- **Interactive model picker** (when no model is set and stdin is a TTY): rather than just
+  erroring, tubelens lists the recommended models for the providers the user *actually has
+  a key for* (Ollama too, if installed) and lets them pick a number — the first is the
+  Enter-through recommended default. This removes the "how do I know the exact model
+  string?" friction without reintroducing a silent default: the user still chooses, just
+  from a menu. Providers are listed **equally** — none is pushed. When non-interactive
+  (piped/CI), fall back to the friendly no-model message. A short curated
+  `RECOMMENDED_MODELS` map backs the menu; any litellm model string still works via
+  `--model`.
 - **Free paths are first-class and documented up front:**
   - **NVIDIA** (`nvidia_nim/...`, key `NVIDIA_NIM_API_KEY`) — NVIDIA offers free hosted-
     LLM API access at build.nvidia.com (no payment method, no GPU). With the free YouTube
@@ -397,7 +404,7 @@ visual minimalism.
 
 | Failure | Behavior |
 |---|---|
-| No model selected (`--model`/`TUBELENS_MODEL` unset) | Exit immediately with a message listing the free (NVIDIA/Ollama) and paid model options |
+| No model selected (`--model`/`TUBELENS_MODEL` unset) | Interactive TTY: show the model picker (§8). Non-interactive: exit with the no-model message |
 | Missing `YOUTUBE_API_KEY` / LLM key | Exit immediately with setup instructions incl. exact URL to create the key |
 | YouTube quota exceeded | Clear message: quota resets midnight PT; suggest `--scan` reduction |
 | Individual transcript fetch fails | Skip video, mark in coverage table, continue |

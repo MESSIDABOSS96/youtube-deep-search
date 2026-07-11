@@ -139,40 +139,40 @@ Plus two API keys (both free to create — ~5 minutes total):
      ```
   Free quota is 10,000 units/day ≈ 16 default runs/day. No billing required.
 
-**2. An LLM — you must pick one; there is no default.** tubelens is provider-neutral and
-will not run until you tell it which model to use with `--model`. I highly recommend
-checking out [this X post](https://x.com/k2sbhai/status/2071981082594210054?s=46) that
-walks you through getting **free** access to a bunch of models through NVIDIA — perfect
-for use-cases like this and your own projects. Set your chosen provider's key and pass the
-matching `--model`:
+**2. An LLM — you choose which; there's no default.** tubelens is provider-neutral: set
+the key for whatever provider you already use, and **on first run it shows you a menu of
+that provider's models to pick from** — you don't have to memorize a model string. Set
+any one of these:
 
-| Provider | Set this key | Example `--model` |
-|---|---|---|
-| **NVIDIA (free)** ⭐ | `NVIDIA_NIM_API_KEY` | `nvidia_nim/meta/llama-3.1-8b-instruct` |
-| Anthropic | `ANTHROPIC_API_KEY` | `anthropic/claude-haiku-4-5` |
-| OpenAI | `OPENAI_API_KEY` | `openai/gpt-4o-mini` |
-| Google Gemini | `GEMINI_API_KEY` | `gemini/gemini-1.5-flash` |
-| Groq | `GROQ_API_KEY` | `groq/llama-3.1-8b-instant` |
-| Mistral | `MISTRAL_API_KEY` | `mistral/mistral-small-latest` |
-| Cohere | `COHERE_API_KEY` | `cohere/command-r` |
-| **Local (Ollama)** | *none* | `ollama/llama3.1` |
+| Provider | Set this key |
+|---|---|
+| Anthropic | `ANTHROPIC_API_KEY` |
+| OpenAI | `OPENAI_API_KEY` |
+| Google Gemini | `GEMINI_API_KEY` |
+| Groq | `GROQ_API_KEY` |
+| Mistral | `MISTRAL_API_KEY` |
+| Cohere | `COHERE_API_KEY` |
+| NVIDIA *(has a free tier)* | `NVIDIA_NIM_API_KEY` |
+| Local via [Ollama](https://ollama.com) | *none needed* |
 
-> Run tubelens without `--model` and it stops with these options — it never guesses a
-> provider for you. To skip typing `--model` every run, set
-> `export TUBELENS_MODEL="nvidia_nim/meta/llama-3.1-8b-instruct"` (or your choice).
+Any [litellm](https://docs.litellm.ai/docs/providers)-supported provider works, not just
+these. Want a **free** option? NVIDIA offers free hosted models (this
+[X post](https://x.com/k2sbhai/status/2071981082594210054?s=46) walks through getting a
+key at build.nvidia.com), and a local Ollama model needs no key at all — either one makes
+YouTube the only key you need.
 
-> Combined with the **free** YouTube key, **NVIDIA's free access to models** makes tubelens
-> **$0 to run** on a good cloud model — no local GPU needed. (Free-tier limits are NVIDIA's;
-> check their site for current terms.)
+> **Choosing a model.** On first run tubelens shows a numbered menu of models for the
+> providers you have keys for — just press Enter for the recommended one, or pick a
+> number. To skip the menu, set your choice once:
+> `export TUBELENS_MODEL="anthropic/claude-haiku-4-5"` (or any model string). You can also
+> pass `--model <string>` on a single run.
 
 > **Make your settings stick:** `export` only lasts until you close the terminal. To set
 > them permanently, add these to your shell profile, then reopen your terminal:
 > ```sh
 > echo 'export YOUTUBE_API_KEY="your-key"' >> ~/.zshrc
-> echo 'export NVIDIA_NIM_API_KEY="your-key"' >> ~/.zshrc      # or your provider's variable
-> echo 'export TUBELENS_MODEL="nvidia_nim/meta/llama-3.1-8b-instruct"' >> ~/.zshrc  # your model
+> echo 'export ANTHROPIC_API_KEY="your-key"' >> ~/.zshrc   # or your provider's variable
 > ```
-> With `TUBELENS_MODEL` set, you can skip `--model` on every run.
 
 ### Installation
 
@@ -198,12 +198,13 @@ tubelens --version
 <!-- USAGE -->
 ## Usage
 
-Pass your chosen model with `--model` (or set `TUBELENS_MODEL` once, as above):
-
 ```sh
-tubelens --model nvidia_nim/meta/llama-3.1-8b-instruct \
-  "how to start growth work for an app before it's on the app store"
+tubelens "how to start growth work for an app before it's on the app store"
 ```
+
+The first time, tubelens shows a quick menu to pick your model (press Enter for the
+recommended one). After that — or once you've set `TUBELENS_MODEL` — it goes straight to
+the search.
 
 You'll see progress in the terminal (expanding your query into searches → fetching
 transcripts → ranking), and in ~30–60 seconds a report opens in your browser with:
@@ -220,7 +221,7 @@ Common flags (see `tubelens --help` for all):
 |---|---|
 | `--results N` | how many top videos to deep-read; all are shown, tiered by match strength (default 10) |
 | `--scan N` | how many candidate videos to examine (default 80) |
-| `--model MODEL` | **Required.** Which LLM to use, e.g. `nvidia_nim/meta/llama-3.1-8b-instruct`, `ollama/llama3.1`, `anthropic/claude-haiku-4-5` |
+| `--model MODEL` | Which LLM to use, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4o-mini`, `ollama/llama3.1`. Omit it and tubelens shows a picker |
 | `--no-brief` | skip the synthesized playbook |
 | `--no-clarify` | never ask clarifying questions |
 
@@ -229,14 +230,12 @@ Common flags (see `tubelens --help` for all):
 ### Cost
 
 Ranking is a judgment task that **cheap models do well** — you do not need a frontier
-model. The free NVIDIA and Ollama options work great; if you use a paid provider, a cheap
-model is the right choice.
+model. A cheap model costs pennies per query; free options cost nothing.
 
 | Setup | Approx. cost per query |
 |---|---|
-| **NVIDIA free tier** (`nvidia_nim/...`) | **$0.00** |
-| Local model via Ollama | $0.00 |
 | A cheap cloud model (e.g. Haiku, GPT-4o-mini) | ~$0.01–0.05 |
+| Free options (NVIDIA free tier, or local Ollama) | $0.00 |
 | Frontier model (not recommended) | ~10–30× a cheap model, for little quality gain |
 
 If you pass a known-expensive model, tubelens prints a one-line heads-up and proceeds.

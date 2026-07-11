@@ -8,6 +8,7 @@ when the chosen model's key is missing (SPEC §8, §9).
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +48,77 @@ def deep_read_count(results: int) -> int:
     return max(15, results + 5)
 
 
+# A short, curated set of good models per provider, shown in the interactive picker
+# (SPEC §8). Suggestions only — any litellm model string still works via --model. The
+# first entry per provider is the recommended default. Providers are listed neutrally;
+# only those the user actually has a key for (or Ollama, if installed) are ever shown.
+RECOMMENDED_MODELS: dict[str, list[tuple[str, str]]] = {
+    "anthropic": [
+        ("anthropic/claude-haiku-4-5", "cheap, fast"),
+        ("anthropic/claude-sonnet-5", "smarter, pricier"),
+    ],
+    "openai": [
+        ("openai/gpt-4o-mini", "cheap, fast"),
+        ("openai/gpt-4o", "smarter, pricier"),
+    ],
+    "gemini": [
+        ("gemini/gemini-1.5-flash", "cheap, fast"),
+        ("gemini/gemini-1.5-pro", "smarter, pricier"),
+    ],
+    "groq": [
+        ("groq/llama-3.1-8b-instant", "fast"),
+        ("groq/llama-3.3-70b-versatile", "smarter"),
+    ],
+    "mistral": [
+        ("mistral/mistral-small-latest", "cheap, fast"),
+        ("mistral/mistral-large-latest", "smarter"),
+    ],
+    "cohere": [
+        ("cohere/command-r", "cheap, fast"),
+        ("cohere/command-r-plus", "smarter"),
+    ],
+    "nvidia_nim": [
+        ("nvidia_nim/meta/llama-3.1-8b-instruct", "free tier, fast"),
+        ("nvidia_nim/meta/llama-3.3-70b-instruct", "free tier, smarter"),
+    ],
+    "ollama": [
+        ("ollama/llama3.1", "local, no key"),
+    ],
+}
+
+
+def available_model_choices() -> list[tuple[str, str]]:
+    """(model_string, label) for every provider the user can actually use right now.
+
+    A provider qualifies if its key env var is set; Ollama qualifies if it's installed.
+    Used by the interactive picker so a first-time user selects from a list instead of
+    memorizing a model string.
+    """
+    choices: list[tuple[str, str]] = []
+    for provider, models in RECOMMENDED_MODELS.items():
+        if provider == "ollama":
+            if shutil.which("ollama") is None:
+                continue
+        else:
+            env_var = PROVIDER_KEYS.get(provider)
+            if not env_var or not os.environ.get(env_var):
+                continue
+        choices.extend(models)
+    return choices
+
+
+def no_model_message() -> str:
+    """Friendly 'you must pick a model' message for non-interactive runs (no TTY)."""
+    return (
+        "No model selected — tubelens has no default; you must choose one.\n\n"
+        "Pass --model, or set TUBELENS_MODEL to avoid typing it each time. For example:\n"
+        "  --model anthropic/claude-haiku-4-5   (or openai/..., gemini/..., etc.)\n"
+        "  --model ollama/llama3.1              (local, no key)\n"
+        "  --model nvidia_nim/meta/llama-3.1-8b-instruct   (NVIDIA free tier)\n\n"
+        "See the provider table in the README for all options."
+    )
+
+
 class ConfigError(Exception):
     """Raised when configuration is missing/invalid; surfaced as a friendly message."""
 
@@ -72,8 +144,8 @@ class Config(BaseModel):
     def deep_read_count(self) -> int:
         return deep_read_count(self.results)
 
-    def validate_keys(self) -> None:
-        """SPEC §8, §9: fail fast with the exact env var needed if the key is missing."""
+    def validate_youtube_key(self) -> None:
+        """SPEC §9: the YouTube key is always required, whatever the model."""
         if not self.youtube_api_key:
             raise ConfigError(
                 "YOUTUBE_API_KEY is not set. Create a YouTube Data API v3 key at "
@@ -83,6 +155,9 @@ class Config(BaseModel):
                 "The YouTube key is always required — candidate videos come from "
                 "the Data API. See README §Setup."
             )
+
+    def validate_model_key(self) -> None:
+        """SPEC §8, §9: the chosen model's provider key must be present."""
         env_var = required_key_for_model(self.model)
         if env_var is not None and not os.environ.get(env_var):
             raise ConfigError(
@@ -92,6 +167,11 @@ class Config(BaseModel):
                 "Or use a local model that needs no key, e.g. "
                 f"--model ollama/llama3.1. See README §Setup."
             )
+
+    def validate_keys(self) -> None:
+        """Validate both keys (kept for callers/tests that want a single check)."""
+        self.validate_youtube_key()
+        self.validate_model_key()
 
 
 def required_key_for_model(model: str) -> str | None:
@@ -136,16 +216,9 @@ def load_config(args: Any) -> Config:
             return int(val)
         return val
 
-    model = pick("model", "TUBELENS_MODEL", None)
-    if not model:
-        raise ConfigError(
-            "No model selected — tubelens has no default; you must choose one.\n\n"
-            "Pass --model, or set TUBELENS_MODEL to avoid typing it each time. Options:\n"
-            "  Free  : --model nvidia_nim/meta/llama-3.1-8b-instruct   (key: build.nvidia.com)\n"
-            "  Free  : --model ollama/llama3.1                         (local, no key)\n"
-            "  Paid  : --model anthropic/claude-haiku-4-5              (or openai/...)\n\n"
-            "See the provider table in the README for all options."
-        )
+    # No default model. If unset, it stays "" here; main() resolves it via the
+    # interactive picker (TTY) or the no_model_message() error (non-interactive).
+    model = pick("model", "TUBELENS_MODEL", None) or ""
     triage_model = pick("triage_model", "TUBELENS_TRIAGE_MODEL", None) or model
     results = pick("results", "TUBELENS_RESULTS", DEFAULT_RESULTS, int)
     scan = pick("scan", "TUBELENS_SCAN", DEFAULT_SCAN, int)

@@ -28,7 +28,14 @@ from pathlib import Path
 from rich.console import Console
 
 from . import __version__
-from .config import Config, ConfigError, deep_read_count, load_config
+from .config import (
+    Config,
+    ConfigError,
+    available_model_choices,
+    deep_read_count,
+    load_config,
+    no_model_message,
+)
 from .llm import warn_if_expensive
 from .models import CandidateStatus
 from .ranking import (
@@ -328,6 +335,72 @@ def _render_report(cfg, ce, candidates, ranked_pairs, playbook, started) -> Path
     return out_path
 
 
+def _pick_model_interactive() -> str | None:
+    """Show a numbered list of models for the providers the user has, and read a choice.
+
+    Only providers with a key present (or Ollama, if installed) are listed — equally, no
+    provider is pushed. The first option is the recommended default (Enter selects it).
+    Returns the chosen model string, or None if there are no usable providers / the user
+    aborts. SPEC §8.
+    """
+    choices = available_model_choices()
+    if not choices:
+        return None
+    console.print(
+        "\n[bold]Pick a model[/bold] — tubelens has no default. "
+        "[dim](one-time; set TUBELENS_MODEL to skip this)[/dim]"
+    )
+    for i, (model_string, label) in enumerate(choices, 1):
+        rec = " [green](recommended)[/green]" if i == 1 else ""
+        console.print(f"  [bold]{i}[/bold]) [cyan]{model_string}[/cyan]  [dim]— {label}[/dim]{rec}")
+    try:
+        raw = input("\n  Enter number [1]: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return None
+    if not raw:
+        return choices[0][0]
+    try:
+        idx = int(raw) - 1
+    except ValueError:
+        idx = -1
+    if idx < 0 or idx >= len(choices):
+        console.print("[yellow]tubelens:[/yellow] not a valid choice.")
+        return None
+    return choices[idx][0]
+
+
+def _resolve_model(cfg) -> bool:
+    """Ensure cfg.model is set — via the interactive picker (TTY) or a friendly error.
+
+    Returns True if a model is now set, False if the caller should exit.
+    """
+    if cfg.model:
+        return True
+    if sys.stdin.isatty():
+        chosen = _pick_model_interactive()
+        if chosen:
+            cfg.model = chosen
+            if not cfg.triage_model:
+                cfg.triage_model = chosen
+            console.print(
+                f"[green]✓[/green] Using [cyan]{chosen}[/cyan]  "
+                f'[dim](tip: export TUBELENS_MODEL="{chosen}" to skip this next time)[/dim]'
+            )
+            return True
+        if not available_model_choices():
+            console.print(
+                "[red]tubelens:[/red] No provider key detected. Set one first — e.g. "
+                "ANTHROPIC_API_KEY, OPENAI_API_KEY, or NVIDIA_NIM_API_KEY (or install "
+                "Ollama for a local model). See the README §Setup."
+            )
+        else:
+            console.print("[red]tubelens:[/red] no model chosen.")
+        return False
+    # Non-interactive (piped/CI): can't prompt — show the friendly guidance.
+    console.print(f"[red]tubelens:[/red] {no_model_message()}")
+    return False
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -341,8 +414,18 @@ def main() -> int:
         console.print("[red]tubelens:[/red] please provide a search query.")
         return 2
 
+    # YouTube key is required no matter the model — check it before choosing a model.
     try:
-        cfg.validate_keys()
+        cfg.validate_youtube_key()
+    except ConfigError as exc:
+        console.print(f"[red]tubelens:[/red] {exc}")
+        return 2
+
+    # Resolve the model (interactive picker if unset), then confirm its key.
+    if not _resolve_model(cfg):
+        return 2
+    try:
+        cfg.validate_model_key()
     except ConfigError as exc:
         console.print(f"[red]tubelens:[/red] {exc}")
         return 2
