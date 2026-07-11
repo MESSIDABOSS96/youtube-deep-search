@@ -1,0 +1,26 @@
+{# tubelens HTML report template (SPEC §7).
+
+   Self-contained: all CSS inline in <style>, tiny vanilla JS inline for collapse/expand,
+   no external fetches except i.ytimg.com thumbnails. Light/dark via prefers-color-scheme.
+
+   REQUIRED sections in order (SPEC §7.2); the trust-related ones (coverage strip,
+   expanded-queries, full scan table) MUST NOT be dropped (SPEC §7.3):
+     1. header       — {{ query }} verbatim + {{ intent_summary }}
+     2. coverage     — "Expanded into N searches · X found · Y transcripts read · top K shown"
+                        with the exact expanded queries expandable
+     3. playbook     — {{ playbook }} numbered points, each with source chips linking to
+                        the video at its timestamp   (omit iff --no-brief)
+     4. results      — {{ results }} ranked cards: thumbnail, title, channel, views,
+                        duration, score badge, why sentence, "Jump to mm:ss" link
+     5. scanned      — {{ all_candidates }} collapsed table: every video with triage score,
+                        5-word reason, and status (deep-read / triaged out / no transcript /
+                        filtered: short)
+     6. footer       — models used, run duration, generated-at, tool name + repo link
+
+   TODO(implement): full markup + styles. This is a placeholder shell. #}
+<!-- tubelens report — TODO(implement) per SPEC §7. Placeholder shell below. -->
+<main>
+  <h1>{{ query }}</h1>
+  <p>{{ intent_summary }}</p>
+  <!-- coverage strip, playbook, ranked cards, scanned table, footer go here -->
+</main>
