@@ -1,3 +1,4 @@
+<img width="798" height="710" alt="Screenshot 2026-07-10 at 11 50 11 PM" src="https://github.com/user-attachments/assets/d9b2fbea-2f94-4f95-b4ef-79d598806789" />
 <a id="readme-top"></a>
 
 <!-- PROJECT SHIELDS -->
@@ -57,7 +58,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![tubelens report screenshot][product-screenshot]](https://github.com/MESSIDABOSS96/youtube-deep-search)
+[product-screenshot]: images/screenshot.png
 
 When using YouTube to intentionally learn or find something, I have wasted hours trying 
 to skip through videos trying to find one that's actually what I'm looking for. The most
@@ -336,4 +337,4 @@ service and should not be run as one.** tubelens uses no YouTube branding or log
 [issues-url]: https://github.com/MESSIDABOSS96/youtube-deep-search/issues
 [license-shield]: https://img.shields.io/github/license/MESSIDABOSS96/youtube-deep-search.svg?style=for-the-badge
 [license-url]: https://github.com/MESSIDABOSS96/youtube-deep-search/blob/main/LICENSE
-[product-screenshot]: images/screenshot.png
+
