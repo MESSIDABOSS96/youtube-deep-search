@@ -36,6 +36,7 @@ PROVIDER_KEYS: dict[str, str | None] = {
     "cohere": "COHERE_API_KEY",
     "azure": "AZURE_API_KEY",
     "huggingface": "HUGGINGFACE_API_KEY",
+    "nvidia_nim": "NVIDIA_NIM_API_KEY",  # free API access via build.nvidia.com
     "ollama": None,
 }
 

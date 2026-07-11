@@ -130,6 +130,7 @@ Set that provider's key and point `--model` at it:
 
 | Provider | Set this key | Example `--model` |
 |---|---|---|
+| **NVIDIA (free)** ⭐ | `NVIDIA_NIM_API_KEY` | `nvidia_nim/meta/llama-3.1-8b-instruct` |
 | Anthropic *(default)* | `ANTHROPIC_API_KEY` | `anthropic/claude-haiku-4-5` |
 | OpenAI | `OPENAI_API_KEY` | `openai/gpt-4o-mini` |
 | Google Gemini | `GEMINI_API_KEY` | `gemini/gemini-1.5-flash` |
@@ -138,10 +139,20 @@ Set that provider's key and point `--model` at it:
 | Cohere | `COHERE_API_KEY` | `cohere/command-r` |
 | **Local (Ollama)** | *none* | `ollama/llama3.1` |
 
-With a **local model** via [Ollama](https://ollama.com) you need *no LLM key at all* —
-YouTube becomes the only key you need. Any
-[litellm](https://docs.litellm.ai/docs/providers)-supported provider works, not just the
-rows above. (An Anthropic key: create one at
+> ### 💸 Want to run it for free?
+> **NVIDIA gives free API access to hosted LLMs** — no payment method, no local setup:
+> 1. Sign up at <https://build.nvidia.com/> and generate an API key (free credits).
+> 2. `export NVIDIA_NIM_API_KEY="nvapi-..."`
+> 3. Run with `--model nvidia_nim/meta/llama-3.1-8b-instruct` (or any model listed on
+>    build.nvidia.com, e.g. `nvidia_nim/deepseek-ai/deepseek-r1`).
+>
+> Combined with the **free** YouTube key, this makes tubelens **$0 to run** on a
+> good cloud model — no local GPU needed. (Free-tier limits are NVIDIA's; check their
+> site for current terms.)
+
+With a **local model** via [Ollama](https://ollama.com) you also need *no LLM key at all*.
+Any [litellm](https://docs.litellm.ai/docs/providers)-supported provider works, not just
+the rows above. (Prefer Anthropic? Create a key at
 <https://console.anthropic.com/settings/keys> — needs a payment method, but $5 of credit
 covers hundreds of runs.)
 
@@ -208,8 +219,9 @@ model, and tubelens defaults to a cheap one on purpose.
 
 | Setup | Approx. cost per query |
 |---|---|
-| Default cheap cloud model | ~$0.01–0.05 |
+| **NVIDIA free tier** (`nvidia_nim/...`) | **$0.00** |
 | Local model via Ollama | $0.00 |
+| Default cheap cloud model | ~$0.01–0.05 |
 | Frontier model (not recommended) | ~10–30× the default, for little quality gain |
 
 If you pass a known-expensive model, tubelens prints a one-line heads-up and proceeds.
