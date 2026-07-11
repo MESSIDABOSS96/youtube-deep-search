@@ -108,7 +108,23 @@ To get a local copy up and running, follow these steps.
 
 ### Prerequisites
 
-**Python 3.10+**, and two API keys (both free to create — ~5 minutes total):
+**Python 3.10 or newer.** Check what you have:
+
+```sh
+python3 --version
+```
+
+If that prints 3.10+ you're set. If it prints something older (macOS ships **3.9** by
+default, which is too old), install a newer Python — the quickest way on a Mac is:
+
+```sh
+brew install python@3.11
+```
+
+Then, when you install tubelens below, add `--python python3.11` to the command so it
+uses that version.
+
+Plus two API keys (both free to create — ~5 minutes total):
 
 **1. A YouTube Data API v3 key** — always required; this is how candidate videos are found.
   1. Go to <https://console.cloud.google.com/> and sign in with any Google account.
@@ -279,7 +295,7 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information
 
 <!-- CONTACT -->
 ## Contact
-Anirudh Chatterjee - [@anirudh_c5]([url](https://x.com/anirudh_c5)) (on X) - anirudhc2005@gmail.com
+Anirudh Chatterjee — [@anirudh_c5](https://x.com/anirudh_c5) (on X) — anirudhc2005@gmail.com
 
 Project Link:
 [https://github.com/MESSIDABOSS96/youtube-deep-search](https://github.com/MESSIDABOSS96/youtube-deep-search)
