@@ -16,7 +16,7 @@
     Content-aware YouTube search — describe what you want, and it ranks videos by what's
     actually <em>said</em> in the transcript, not the title.
     <br />
-    <a href="SPEC.md"><strong>Read the design spec »</strong></a>
+    <a href="#getting-started"><strong>Get started »</strong></a>
     <br />
     <br />
     <a href="https://github.com/MESSIDABOSS96/youtube-deep-search/issues/new?labels=bug">Report Bug</a>
