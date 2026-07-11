@@ -30,20 +30,40 @@ No server, no account, no database. It's a local command that writes a page and 
 
 ## Install
 
+Requires **Python 3.10+**. Install straight from GitHub with
+[pipx](https://pipx.pypa.io/stable/installation/) (or `uv`):
+
 ```bash
-pipx install tubelens        # or: uv tool install tubelens
+pipx install git+https://github.com/MESSIDABOSS96/youtube-deep-search.git
+# or: uv tool install git+https://github.com/MESSIDABOSS96/youtube-deep-search.git
 ```
 
-## Setup — your keys
+Check it worked:
+
+```bash
+tubelens --version
+```
+
+> No pipx? `brew install pipx && pipx ensurepath` on macOS, then reopen your terminal.
+> If your system Python is older than 3.10, add `--python python3.11` to the pipx command.
+
+## Setup — your keys (~5 minutes, both free to create)
 
 tubelens runs entirely on your own machine with your own keys. You need:
 
 1. **A YouTube Data API v3 key** (free) — always required; this is how candidate videos
-   are found. Create one at <https://console.cloud.google.com/apis/credentials> (enable
-   "YouTube Data API v3"). Free quota is 10,000 units/day ≈ 16 default runs/day.
-   ```bash
-   export YOUTUBE_API_KEY="..."
-   ```
+   are found:
+   1. Go to <https://console.cloud.google.com/> and sign in with any Google account.
+   2. Create a project (top-left project picker → **New Project** → any name → Create).
+   3. Go to <https://console.cloud.google.com/apis/library/youtube.googleapis.com>
+      and click **Enable**.
+   4. Go to <https://console.cloud.google.com/apis/credentials> → **Create Credentials**
+      → **API key** → copy it.
+   5. Set it in your terminal:
+      ```bash
+      export YOUTUBE_API_KEY="paste-your-key-here"
+      ```
+   Free quota is 10,000 units/day ≈ 16 default runs/day. No billing required.
 2. **An LLM — use whatever provider you already have.** You are *not* locked to
    Anthropic. tubelens works with any of these; just set that provider's key and point
    `--model` at it:
@@ -58,7 +78,9 @@ tubelens runs entirely on your own machine with your own keys. You need:
    | Cohere | `COHERE_API_KEY` | `cohere/command-r` |
    | **Local (Ollama)** | *none* | `ollama/llama3.1` |
 
-   Anthropic is only the *default* when you don't pass `--model`. Pick any row:
+   Anthropic is only the *default* when you don't pass `--model`
+   (create a key at <https://console.anthropic.com/settings/keys> — needs a payment
+   method, but $5 of credit covers hundreds of runs). Pick any row:
    ```bash
    export OPENAI_API_KEY="..."      # for example
    tubelens "..." --model openai/gpt-4o-mini
@@ -69,11 +91,28 @@ tubelens runs entirely on your own machine with your own keys. You need:
    [litellm](https://docs.litellm.ai/docs/providers)-supported provider works, not just
    the rows above.
 
+> **Make your keys stick:** `export` only lasts until you close the terminal. To set
+> them permanently, add the two export lines to your shell profile:
+> ```bash
+> echo 'export YOUTUBE_API_KEY="your-key"' >> ~/.zshrc
+> echo 'export ANTHROPIC_API_KEY="your-key"' >> ~/.zshrc   # or your provider's variable
+> ```
+> then reopen your terminal.
+
 ## Usage
 
 ```bash
 tubelens "how to start growth work for an app before it's on the app store"
 ```
+
+You'll see progress in the terminal (expanding your query into searches → fetching
+transcripts → ranking), and in ~30–60 seconds a report opens in your browser with:
+
+- a one-line **coverage strip** (how many searches/videos/transcripts it covered),
+- a collapsed **playbook** — the advice synthesized across the top videos, with sources,
+- every deep-read video in **tiers** (strong / partial / related), each with a
+  one-line reason, a `whole video`/`one section` chip, and a **jump-to-timestamp** link,
+- an expandable **"Everything scanned"** table so you can verify nothing was hidden.
 
 Common flags (see `tubelens --help` for all):
 
@@ -97,6 +136,17 @@ model, and tubelens defaults to a cheap one on purpose.
 | Frontier model (not recommended) | ~10–30× the default, for little quality gain |
 
 If you pass a known-expensive model, tubelens prints a one-line heads-up and proceeds.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `command not found: tubelens` | Run `pipx ensurepath`, then open a new terminal |
+| "YOUTUBE_API_KEY is not set" | You skipped Setup step 1, or opened a new terminal without adding the key to `~/.zshrc` |
+| "quota exceeded" | Free YouTube quota resets at midnight Pacific; or lower usage with `--scan 40` |
+| Few/zero transcripts retrieved | Rare-topic videos may lack captions; try a broader query |
+| It asks a clarifying question you don't want | Press Enter to skip it, or pass `--no-clarify` |
+| Report didn't open | It's saved as `tubelens-<query>-<time>.html` in your current folder — open it manually |
 
 ## A note on transcripts and YouTube's terms
 

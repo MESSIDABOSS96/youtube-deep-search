@@ -19,8 +19,8 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/anirudhchatterjee/youtube-deep-search"
-Issues = "https://github.com/anirudhchatterjee/youtube-deep-search/issues"
+Repository = "https://github.com/MESSIDABOSS96/youtube-deep-search"
+Issues = "https://github.com/MESSIDABOSS96/youtube-deep-search/issues"
 
 [project.scripts]
 tubelens = "tubelens.cli:main"
