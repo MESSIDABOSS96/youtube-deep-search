@@ -32,6 +32,8 @@ from rich.console import Console
 from . import __version__
 from .config import (
     CONFIG_FILE,
+    PROVIDER_KEYS,
+    RECOMMENDED_MODELS,
     Config,
     ConfigError,
     available_model_choices,
@@ -65,7 +67,11 @@ def build_parser() -> argparse.ArgumentParser:
         prog="tubelens",
         description="Content-aware YouTube search — ranks videos by what's said, not titles.",
     )
-    p.add_argument("query", help="Natural-language, intent-based search query.")
+    p.add_argument(
+        "query", nargs="?", default=None,
+        help="Natural-language, intent-based search query. "
+        "Omit it to be prompted interactively.",
+    )
     p.add_argument(
         "--results", type=int, default=None,
         help="how many top videos to deep-read and rank; all are shown, "
@@ -376,6 +382,77 @@ def _pick_model_interactive() -> str | None:
     return choices[idx][0]
 
 
+def _resolve_query(raw: str | None) -> str | None:
+    """Return the search query, prompting for it interactively if none was passed.
+
+    Running `tubelens` with no query on a terminal shouldn't be an error — it should ask.
+    Non-interactive (piped/CI) with no query stays a friendly error. Returns None if the
+    caller should exit.
+    """
+    if raw and raw.strip():
+        return raw.strip()
+    if not sys.stdin.isatty():
+        console.print(
+            '[red]tubelens:[/red] please provide a search query, e.g. tubelens "how to '
+            'grow an app before launch".'
+        )
+        return None
+    console.print("\n[bold]What do you want to search YouTube for?[/bold]")
+    console.print(
+        "[dim]Describe it in plain English — e.g. how to grow an app before it's on "
+        "the app store[/dim]"
+    )
+    try:
+        q = input("  > ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return None
+    if not q:
+        console.print("[yellow]tubelens:[/yellow] no query entered.")
+        return None
+    return q
+
+
+def _setup_provider_interactive() -> str | None:
+    """No provider key found — walk the user through setting one up, then picking a model.
+
+    Lists the supported key-based providers, lets them pick one, prompts to paste that
+    provider's key (saved to the shell rc file like any other key), then chooses a model
+    for it. Returns a model string, or None if they abort. Reached only on a TTY when no
+    provider key is present, so `tubelens` alone can guide a first-time user end to end.
+    """
+    providers = [p for p in RECOMMENDED_MODELS if PROVIDER_KEYS.get(p)]
+    console.print(
+        "\n[bold]Set up an LLM[/bold] — tubelens needs one provider to read and rank videos."
+    )
+    console.print(
+        "[dim]Pick a provider you already use (or can make a free key for), then paste "
+        "the key.[/dim]"
+    )
+    for i, provider in enumerate(providers, 1):
+        env = PROVIDER_KEYS[provider]
+        free = "  [green](has a free tier)[/green]" if provider == "nvidia_nim" else ""
+        console.print(
+            f"  [bold]{i}[/bold]) [cyan]{provider}[/cyan]  [dim]— needs {env}[/dim]{free}"
+        )
+    console.print("  [dim](or install Ollama for a local model that needs no key)[/dim]")
+    try:
+        raw = input("\n  Provider number: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return None
+    try:
+        provider = providers[int(raw) - 1]
+    except (ValueError, IndexError):
+        console.print("[yellow]tubelens:[/yellow] not a valid choice.")
+        return None
+
+    env_var = PROVIDER_KEYS[provider]
+    console.print(f"\n  Create a key for [cyan]{provider}[/cyan], then paste it below.")
+    if not _offer_to_save_key(env_var):
+        return None
+    # A key now exists for this provider, so the model picker can list its models.
+    return _pick_model_interactive() or RECOMMENDED_MODELS[provider][0][0]
+
+
 def _offer_to_save_key(env_var: str) -> bool:
     """On a TTY, offer to paste a missing API key and persist it to the shell rc file.
 
@@ -444,6 +521,9 @@ def _resolve_model(cfg) -> bool:
         return True
     if sys.stdin.isatty():
         chosen = _pick_model_interactive()
+        # No provider key at all → guide them through setting one up instead of failing.
+        if not chosen and not available_model_choices():
+            chosen = _setup_provider_interactive()
         if chosen:
             cfg.model = chosen
             if not cfg.triage_model:
@@ -456,14 +536,7 @@ def _resolve_model(cfg) -> bool:
                 f"[dim](saved to {CONFIG_FILE} — won't ask again)[/dim]"
             )
             return True
-        if not available_model_choices():
-            console.print(
-                "[red]tubelens:[/red] No provider key detected. Set one first — e.g. "
-                "ANTHROPIC_API_KEY, OPENAI_API_KEY, or NVIDIA_NIM_API_KEY (or install "
-                "Ollama for a local model). See the README §Setup."
-            )
-        else:
-            console.print("[red]tubelens:[/red] no model chosen.")
+        console.print("[red]tubelens:[/red] no model chosen.")
         return False
     # Non-interactive (piped/CI): can't prompt — show the friendly guidance.
     console.print(f"[red]tubelens:[/red] {no_model_message()}")
@@ -473,14 +546,18 @@ def _resolve_model(cfg) -> bool:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+
+    # Resolve the query first — running `tubelens` with no query prompts for it (TTY)
+    # rather than erroring, so `pipx install` then `tubelens` can guide a first-timer.
+    query = _resolve_query(args.query)
+    if query is None:
+        return 2
+    args.query = query
+
     try:
         cfg = load_config(args)
     except ConfigError as exc:
         console.print(f"[red]tubelens:[/red] {exc}")
-        return 2
-
-    if not cfg.query.strip():
-        console.print("[red]tubelens:[/red] please provide a search query.")
         return 2
 
     # YouTube key is required no matter the model — check it before choosing a model.
