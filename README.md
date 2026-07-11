@@ -65,10 +65,10 @@ I tried a few keywords but still was mostly getting results of videos talking ab
 post-launch (maybe I'm just bad at searching).
 
 But it got me thinking if a lightweight tool that was easy to build could search YouTube better 
-than me. That's how I landde on this project. Tubelens allows you to describe what you want in 
+than me. That's how I landed on this project. Tubelens allows you to describe what you want in 
 plain English, and it searches YouTube, *reads the transcripts* of the videos it finds, and ranks 
-them by what's actually said inside them. It writes you a short "here's what to do" brief and opens a
-self-contained HTML report with clickable, jump-to-timestamp links.
+them by what's actually said inside them. It gives you a super simple self-contained HTML report (nothing 
+fancy here) with clickable, jump-to-timestamp links.
 
 No server, no account, no database. It's a local command that writes a page and opens it. 
 Runs entirely on your own machine with your own API keys.
