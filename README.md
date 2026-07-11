@@ -1,4 +1,4 @@
-<img width="798" height="710" alt="Screenshot 2026-07-10 at 11 50 11 PM" src="https://github.com/user-attachments/assets/d9b2fbea-2f94-4f95-b4ef-79d598806789" />
+
 <a id="readme-top"></a>
 
 <!-- PROJECT SHIELDS -->
@@ -58,7 +58,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[product-screenshot]: images/screenshot.png
+<img width="798" height="710" alt="Screenshot 2026-07-10 at 11 50 11 PM" src="https://github.com/user-attachments/assets/d9b2fbea-2f94-4f95-b4ef-79d598806789" />
 
 When using YouTube to intentionally learn or find something, I have wasted hours trying 
 to skip through videos trying to find one that's actually what I'm looking for. The most
