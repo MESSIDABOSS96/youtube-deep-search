@@ -5,22 +5,270 @@
 
    REQUIRED sections in order (SPEC §7.2); the trust-related ones (coverage strip,
    expanded-queries, full scan table) MUST NOT be dropped (SPEC §7.3):
-     1. header       — {{ query }} verbatim + {{ intent_summary }}
+     1. header       — query verbatim + intent_summary
      2. coverage     — "Expanded into N searches · X found · Y transcripts read · top K shown"
-                        with the exact expanded queries expandable
-     3. playbook     — {{ playbook }} numbered points, each with source chips linking to
-                        the video at its timestamp   (omit iff --no-brief)
-     4. results      — {{ results }} ranked cards: thumbnail, title, channel, views,
-                        duration, score badge, why sentence, "Jump to mm:ss" link
-     5. scanned      — {{ all_candidates }} collapsed table: every video with triage score,
-                        5-word reason, and status (deep-read / triaged out / no transcript /
-                        filtered: short)
+     3. playbook     — numbered points with source chips linking to videos at timestamps
+                        (omit iff --no-brief)
+     4. results      — ranked cards: thumbnail, title, channel, views, duration, score
+                        badge, why sentence, "Jump to mm:ss" link
+     5. scanned      — collapsed table of every candidate with triage score, reason, status
      6. footer       — models used, run duration, generated-at, tool name + repo link
-
-   TODO(implement): full markup + styles. This is a placeholder shell. #}
-<!-- tubelens report — TODO(implement) per SPEC §7. Placeholder shell below. -->
+#}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tubelens — {{ query }}</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #171a21;
+    --card-2: #1d212b;
+    --text: #e7e9ee;
+    --muted: #9aa3b2;
+    --accent: #6ea8fe;
+    --accent-2: #8ad0ff;
+    --border: #2a2f3a;
+    --score: #f5c451;
+    --bad: #ff6b6b;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --card-2: #f0f2f5;
+      --text: #1c1f26;
+      --muted: #5c6573;
+      --accent: #2b6df0;
+      --accent-2: #14746b;
+      --border: #dfe3ea;
+      --score: #9a6a00;
+      --bad: #c0392b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 900px; margin: 0 auto; padding: 28px 20px 80px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .muted { color: var(--muted); }
+  .chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  header h1 { font-size: 26px; margin: 0 0 6px; line-height: 1.25; }
+  header .intent { color: var(--muted); margin: 0 0 10px; }
+  /* coverage strip */
+  .coverage {
+    display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+    padding: 12px 14px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; margin: 16px 0;
+  }
+  .coverage .dot { color: var(--muted); }
+  .coverage button {
+    background: none; border: none; color: var(--accent); cursor: pointer;
+    padding: 0; font: inherit;
+  }
+  .coverage .queries {
+    width: 100%; margin-top: 6px; display: none;
+  }
+  .coverage .queries ul { margin: 6px 0 0; padding-left: 18px; }
+  .coverage .queries li { color: var(--muted); margin: 2px 0; }
+  /* playbook — collapsed to one line by default; results come first visually */
+  section { margin: 24px 0; }
+  h2 { font-size: 19px; margin: 0 0 10px; }
+  details.playbook {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; margin: 16px 0;
+  }
+  details.playbook > summary { font-weight: 600; padding: 2px 0; }
+  details.playbook > summary .muted { font-weight: 400; font-size: 13px; }
+  .playbook ol { padding-left: 20px; margin: 10px 0 4px; }
+  .playbook li { margin: 10px 0; }
+  .playbook .sources { margin-top: 4px; }
+  .playbook .src-chip {
+    display: inline-block; margin: 2px 6px 0 0; padding: 3px 9px; border-radius: 6px;
+    background: var(--card-2); border: 1px solid var(--border); font-size: 12px;
+  }
+  .playbook .src-chip a { color: var(--accent-2); }
+  /* results — compact cards grouped by tier */
+  .tier-head { display: flex; align-items: baseline; gap: 10px; margin: 22px 0 8px; }
+  .tier-head h3 { font-size: 15px; margin: 0; }
+  .tier-head .hint { font-size: 12.5px; color: var(--muted); }
+  .tier-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+  .tier-strong .tier-dot { background: #4cc38a; }
+  .tier-partial .tier-dot { background: var(--score); }
+  .tier-weak .tier-dot { background: var(--muted); }
+  .card {
+    display: grid; grid-template-columns: 128px 1fr; gap: 12px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px; margin: 8px 0;
+  }
+  .relation { margin: 4px 0 0; font-size: 12.5px; color: var(--accent-2); }
+  .relation .rel-label { color: var(--muted); }
+  .card .thumb img { width: 100%; border-radius: 6px; display: block; }
+  .card .meta { font-size: 12.5px; color: var(--muted); margin: 2px 0; }
+  .card .title { font-size: 14.5px; font-weight: 600; }
+  .card .why { margin: 5px 0 0; font-size: 13.5px; }
+  .card .jump { font-size: 12.5px; }
+  .card .score {
+    float: right; font-size: 11.5px; color: var(--muted); font-weight: 500;
+    margin-left: 8px; padding-top: 2px;
+  }
+  .cov-chip {
+    display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px;
+    background: var(--card-2); border: 1px solid var(--border); color: var(--muted);
+    margin-left: 6px; vertical-align: 1px;
+  }
+  /* scanned table */
+  details { margin: 28px 0; }
+  .scanned-wrap { overflow-x: auto; }
+  table.scanned { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.scanned th, table.scanned td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  table.scanned th { color: var(--muted); font-weight: 600; }
+  .status-deep { color: var(--score); }
+  .status-out { color: var(--muted); }
+  .status-no { color: var(--bad); }
+  summary { cursor: pointer; padding: 8px 0; }
+  /* footer */
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 14px; }
+  @media (max-width: 560px) {
+    .card { grid-template-columns: 1fr; }
+    .card .thumb img { width: 100%; max-width: 320px; }
+  }
+</style>
+</head>
+<body>
 <main>
-  <h1>{{ query }}</h1>
-  <p>{{ intent_summary }}</p>
-  <!-- coverage strip, playbook, ranked cards, scanned table, footer go here -->
+  <header>
+    <h1>{{ query }}</h1>
+    <p class="intent">{{ intent_summary }}</p>
+    <span class="chip">tubelens · content-aware YouTube search</span>
+  </header>
+
+  {# ── 2. coverage strip (trust requirement, SPEC §7.3) ─────────────────────── #}
+  <div class="coverage">
+    <span>Expanded into <strong>{{ coverage.searches }}</strong> searches</span>
+    <span class="dot">·</span>
+    <span><strong>{{ coverage.found }}</strong> videos found</span>
+    <span class="dot">·</span>
+    <span><strong>{{ coverage.transcripts }}</strong> transcripts read</span>
+    <span class="dot">·</span>
+    <span><strong>{{ coverage.deep_read }}</strong> deep-read</span>
+    <span class="dot">·</span>
+    <span>all <strong>{{ coverage.shown }}</strong> shown below, by match strength</span>
+    <button type="button" onclick="var q=document.getElementById('q-list');q.style.display=(q.style.display==='block'?'none':'block');">show searches ▾</button>
+    <div class="queries" id="q-list">
+      The tool ran these YouTube searches for you:
+      <ul>{% for sq in coverage.expanded_queries %}<li>{{ sq }}</li>{% endfor %}</ul>
+    </div>
+  </div>
+
+  {# ── 3. playbook — collapsed one-liner so results stay visually first ──────── #}
+  {% if playbook %}
+  <details class="playbook">
+    <summary>📋 {{ playbook.title }} <span class="muted">— the short version, synthesized from the top videos</span></summary>
+    <ol>
+      {% for point in playbook.points %}
+      <li>
+        <div>{{ point.text }}</div>
+        <div class="sources">
+          {% for src in point.sources %}
+          {% set v = results[src.video_index] if src.video_index < (results|length) else none %}
+          {% if v %}
+          <span class="src-chip">
+            ▶ {{ src.seconds | fmt_ts }} · <a href="{{ v.jump_url }}" target="_blank" rel="noopener">{{ v.candidate.title }}</a>
+          </span>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </details>
+  {% endif %}
+
+  {# ── 4. ranked results — everything deep-read, grouped by match strength ───── #}
+  <section>
+    <h2>Ranked results</h2>
+    {% for tier in tiers %}
+    <div class="tier-{{ tier.key }}">
+      <div class="tier-head">
+        <span class="tier-dot"></span>
+        <h3>{{ tier.label }} ({{ tier.results|length }})</h3>
+        <span class="hint">{{ tier.hint }}</span>
+      </div>
+      {% for v in tier.results %}
+      <div class="card">
+        <div class="thumb">
+          <a href="{{ v.jump_url }}" target="_blank" rel="noopener">
+            <img src="{{ v.candidate.thumbnail_url }}" alt="" loading="lazy"
+                 onerror="this.style.display='none'">
+          </a>
+        </div>
+        <div class="body">
+          <div>
+            <span class="score" title="content-match score from the deep read">{{ "%.1f"|format(v.deep.score) }}</span>
+            <a class="title" href="{{ v.jump_url }}" target="_blank" rel="noopener">{{ v.candidate.title }}</a>
+            {% if v.deep.coverage %}<span class="cov-chip">{{ v.deep.coverage }}</span>{% endif %}
+          </div>
+          <div class="meta">
+            {{ v.candidate.channel }} · {{ v.candidate.view_count | fmt_views }} views · {{ v.candidate.duration_seconds | fmt_duration }}
+          </div>
+          <div class="why">{{ v.deep.why }}{% if v.deep.best_timestamp_seconds %}
+            <span class="jump">— <a href="{{ v.jump_url }}" target="_blank" rel="noopener">Jump to {{ v.deep.best_timestamp_seconds | fmt_ts }}</a>{% if v.deep.timestamp_reason %} ({{ v.deep.timestamp_reason }}){% endif %}</span>
+          {% endif %}</div>
+          {% if v.deep.relation %}
+          <div class="relation"><span class="rel-label">↳ relates:</span> {{ v.deep.relation }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </section>
+
+  {# ── 5. everything scanned (trust requirement, collapsed by default) ───────── #}
+  <details>
+    <summary><strong>Everything scanned ({{ all_candidates|length }})</strong> — verify nothing was hidden</summary>
+    <div class="scanned-wrap">
+      <table class="scanned">
+        <thead><tr><th>#</th><th>Title</th><th>Channel</th><th>Triage</th><th>Reason</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for c in all_candidates %}
+          <tr>
+            <td class="muted">{{ loop.index }}</td>
+            <td><a href="https://www.youtube.com/watch?v={{ c.candidate.video_id }}" target="_blank" rel="noopener">{{ c.candidate.title }}</a></td>
+            <td class="muted">{{ c.candidate.channel }}</td>
+            <td>{% if c.candidate.triage %}{{ "%.1f"|format(c.candidate.triage.score) }}{% else %}—{% endif %}</td>
+            <td class="muted">{% if c.candidate.triage %}{{ c.candidate.triage.reason }}{% else %}—{% endif %}</td>
+            <td class="{{ c.status_class }}">{{ c.candidate.status.value }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  {# ── 6. footer ────────────────────────────────────────────────────────────── #}
+  <footer>
+    Generated by <a href="https://github.com/anirudhchatterjee/youtube-deep-search">tubelens</a>
+    · model: <code>{{ model }}</code> · triage: <code>{{ triage_model }}</code>
+    · {{ duration_seconds | fmt_duration }} · {{ generated_at }}<br>
+    Content-aware ranking of public YouTube captions. Not affiliated with YouTube.
+    Transcript retrieval is a gray area under YouTube's ToS — see README for details.
+  </footer>
 </main>
+</body>
+</html>

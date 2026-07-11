@@ -11,12 +11,16 @@ keywords = ["youtube", "search", "transcripts", "llm", "semantic-search", "cli"]
 # Exactly these + stdlib, per SPEC §10. Keep the dependency list minimal.
 dependencies = [
     "httpx>=0.27",              # YouTube Data API is plain REST; no heavy google client
-    "youtube-transcript-api>=0.6",
+    "youtube-transcript-api>=1.0",  # code uses the v1.x instance API (.fetch/.list)
     "litellm>=1.40",           # provider-agnostic LLM calls (Anthropic/OpenAI/Ollama/...)
     "jinja2>=3.1",             # HTML report template
     "rich>=13.0",              # terminal progress display
     "pydantic>=2.0",           # config + LLM output validation
 ]
+
+[project.urls]
+Repository = "https://github.com/anirudhchatterjee/youtube-deep-search"
+Issues = "https://github.com/anirudhchatterjee/youtube-deep-search/issues"
 
 [project.scripts]
 tubelens = "tubelens.cli:main"

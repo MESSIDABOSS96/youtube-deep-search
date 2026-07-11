@@ -235,16 +235,38 @@ For each of the top ~15, one LLM call (run in parallel, bounded ~5 concurrent):
 
 ```json
 {
-  "score": 8.5,                       // 0–10 content match to intent
-  "why": "one sentence, specific: what this video actually covers for this intent",
+  "score": 8.5,                       // 0–10, calibrated against explicit anchors
+  "why": "MAX 12 words, starts with a verb — concise by contract",
   "best_timestamp_seconds": 252,
-  "timestamp_reason": "starts the pre-launch waitlist walkthrough",
-  "key_points": ["...", "..."]        // 2–4 bullets, used by synthesis
+  "timestamp_reason": "MAX 6 words",
+  "key_points": ["..."],              // 2–4 bullets, MAX 8 words each; used by synthesis
+  "coverage": "whole video"           // or "one section" | "brief mention"
 }
 ```
 
-- Final ranking = stage-2 score (stage-1 score is discarded except for the coverage
-  table). Ties broken by view count. Show top `--results`.
+- The prompt includes scoring anchors (9–10 = whole video on this intent; 7–8 =
+  substantial section; 4–6 = touches it; 0–3 = unrelated) so isolated grades don't
+  all cluster at 7–9.
+
+### 6.5b Comparative rank (final calibration pass)
+
+Stage-2 scores come from **isolated** calls — the model never sees two videos
+together, so cross-video ordering from those scores alone is noise. One additional
+cheap LLM call receives compact summaries of ALL deep-read videos side by side and
+returns the definitive best-to-worst ordering, plus for each video:
+
+- a **tier**: `strong` (directly addresses the intent) / `partial` (useful section
+  or angle) / `weak` (related topic, different focus), and
+- for non-strong tiers, a **relation note** (MAX 12 words, "covers X, not Y") saying
+  how the video relates to but diverges from the intent — lower tiers are framed as
+  adjacent-and-possibly-interesting, never as junk.
+
+Fallbacks: if the pass fails or returns partial coverage of the pool, fall back to
+stage-2 score order with score-derived tiers (≥7.5 strong, ≥5 partial, else weak).
+Popularity (view count) is never a ranking signal.
+
+**All deep-read videos are shown**, grouped by tier — there is no arbitrary display
+cut. `--results` sizes the deep-read pool (§6.4), not the display.
 
 ### 6.6 Synthesis ("the playbook")
 
@@ -261,7 +283,8 @@ One LLM call over the top ~6 deep-read results' `key_points` + `why` + metadata:
 - Wall clock: ≤ 60s default run (network permitting). Transcript fetch and stage-2
   are the long poles; both are parallelized.
 - LLM calls per default run: 1 (clarify/expand) + 1–2 (triage) + ~15 (deep) + 1
-  (synthesis) ≈ 18–19 calls, all on a cheap model by default → roughly $0.01–0.05.
+  (comparative rank) + 1 (synthesis) ≈ 19–20 calls, all on a cheap model by default →
+  roughly $0.01–0.05.
 - All LLM calls request JSON and are validated; one retry with error feedback on
   malformed output, then fail that item gracefully (see §9).
 
@@ -280,18 +303,23 @@ One LLM call over the top ~6 deep-read results' `key_points` + `why` + metadata:
 
 1. **Header**: the user's original query, verbatim, large. Subline: intent summary.
 2. **Coverage strip** (trust requirement, always visible, one line):
-   `Expanded into 6 searches · 84 videos found · 61 transcripts read · 15 deep-read · top 10 shown` —
+   `Expanded into 6 searches · 84 videos found · 61 transcripts read · 15 deep-read · all 15 shown below, by match strength` —
    with "6 searches" expandable to list the exact expanded queries.
-3. **The playbook** (unless `--no-brief`): titled brief, numbered points, each point
-   followed by small source chips like `▶ 4:12 · How I Got 1,000 Users` linking to
-   the timestamped video.
-4. **Ranked results**: cards designed to read as *YouTube, but ranked by content*.
-   Each card:
-   - thumbnail (left), linked to the timestamped URL,
+3. **The playbook** (unless `--no-brief`): a **collapsed one-liner** (`<details>`) so
+   results stay visually first; expands to numbered points, each with small source
+   chips like `▶ 4:12 · How I Got 1,000 Users` linking to the timestamped video.
+4. **Ranked results**: every deep-read video, grouped under tier headers —
+   *Strong matches* / *Partial matches* / *Related — different focus* — each header
+   with a one-line hint. Compact cards designed to read as *YouTube, but ranked by
+   content*:
+   - thumbnail (left, ~128px), linked to the timestamped URL,
    - title + channel + views + duration (YouTube-familiar metadata row),
-   - score badge (e.g. `9.2`),
-   - the `why` sentence — specific, not generic,
-   - `Jump to 4:12 — starts the pre-launch waitlist walkthrough` link.
+   - the numeric score demoted to small muted text (the tier is the real signal),
+   - a coverage chip (`whole video` / `one section` / `brief mention`),
+   - the `why` line (≤ 12 words) with the inline
+     `Jump to 4:12 (waitlist walkthrough)` link,
+   - for non-strong tiers, the relation note: `↳ relates: covers post-launch ASO,
+     not pre-launch`.
 5. **Everything scanned** (trust requirement, collapsed by default):
    a table of *all* candidates — title (linked), channel, triage score + 5-word reason,
    and status (`deep-read`, `triaged out`, `no transcript`, `filtered: short`).

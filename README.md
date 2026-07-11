@@ -11,8 +11,7 @@ do" brief and opens a results page with clickable, timestamped links.
 > buried inside videos whose titles never mention what you searched for. tubelens fixes
 > that by ranking on the transcript, not the title.
 
-> ⚠️ **Status: skeleton / not yet implemented.** This repo currently contains the
-> project structure and stubs. See [`SPEC.md`](SPEC.md) for the full design.
+> **Status: v1.** Working end to end. See [`SPEC.md`](SPEC.md) for the full design.
 
 ---
 
@@ -20,8 +19,9 @@ do" brief and opens a results page with clickable, timestamped links.
 
 1. Turns your one question into several YouTube searches (so you don't run them by hand).
 2. Pulls transcripts for the candidate videos.
-3. Ranks them by content in two passes — a cheap triage over all candidates, then a
-   deep read of the most promising ones (keeps it fast and cheap).
+3. Ranks them by content in three passes — a cheap triage over all candidates, a deep
+   read of the most promising ones, then a final side-by-side comparison that sorts
+   everything into tiers (strong / partial / related) with a one-line reason each.
 4. Writes a short synthesized "playbook" from the best videos, with sources cited.
 5. Opens a self-contained HTML report in your browser with ranked cards and
    jump-to-timestamp links.
@@ -44,10 +44,30 @@ tubelens runs entirely on your own machine with your own keys. You need:
    ```bash
    export YOUTUBE_API_KEY="..."
    ```
-2. **An LLM** — one of:
-   - A cloud key, e.g. `export ANTHROPIC_API_KEY="..."` (default model is a cheap tier).
-   - **Or a local model** with [Ollama](https://ollama.com) — *no key, no cost*:
-     `tubelens "..." --model ollama/llama3.1`. This makes YouTube the *only* key you need.
+2. **An LLM — use whatever provider you already have.** You are *not* locked to
+   Anthropic. tubelens works with any of these; just set that provider's key and point
+   `--model` at it:
+
+   | Provider | Set this key | Example `--model` |
+   |---|---|---|
+   | Anthropic *(default)* | `ANTHROPIC_API_KEY` | `anthropic/claude-haiku-4-5` |
+   | OpenAI | `OPENAI_API_KEY` | `openai/gpt-4o-mini` |
+   | Google Gemini | `GEMINI_API_KEY` | `gemini/gemini-1.5-flash` |
+   | Groq | `GROQ_API_KEY` | `groq/llama-3.1-8b-instant` |
+   | Mistral | `MISTRAL_API_KEY` | `mistral/mistral-small-latest` |
+   | Cohere | `COHERE_API_KEY` | `cohere/command-r` |
+   | **Local (Ollama)** | *none* | `ollama/llama3.1` |
+
+   Anthropic is only the *default* when you don't pass `--model`. Pick any row:
+   ```bash
+   export OPENAI_API_KEY="..."      # for example
+   tubelens "..." --model openai/gpt-4o-mini
+   ```
+   With a **local model** via [Ollama](https://ollama.com) you need *no LLM key at all* —
+   YouTube becomes the only key you need. If you choose a model whose key isn't set,
+   tubelens tells you the exact variable to export. Any
+   [litellm](https://docs.litellm.ai/docs/providers)-supported provider works, not just
+   the rows above.
 
 ## Usage
 
@@ -59,7 +79,7 @@ Common flags (see `tubelens --help` for all):
 
 | Flag | Meaning |
 |---|---|
-| `--results N` | how many ranked videos to show (default 10) |
+| `--results N` | how many top videos to deep-read; all are shown, tiered by match strength (default 10) |
 | `--scan N` | how many candidate videos to examine (default 80) |
 | `--model MODEL` | LLM for ranking/synthesis, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4o-mini`, `ollama/llama3.1` |
 | `--no-brief` | skip the synthesized playbook |
