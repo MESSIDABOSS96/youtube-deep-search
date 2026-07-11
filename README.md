@@ -8,7 +8,7 @@
   <h1 align="center">🔍 tubelens</h1>
 
   <p align="center">
-    Content-aware YouTube search — describe what you want, and it ranks videos by what's
+    A better way to search YouTube. Naturally describe what you're looking and it returns videos by what's
     actually <em>said</em> in the transcript, not the title.
     <br />
     <a href="#getting-started"><strong>Get started »</strong></a>
@@ -58,19 +58,20 @@
 
 [![tubelens report screenshot][product-screenshot]](https://github.com/MESSIDABOSS96/youtube-deep-search)
 
-YouTube search ranks on titles, tags, and engagement — not on what is actually *said* in
-a video. So intent-based questions — *"how to start growth work for an app that isn't
-released yet"* or *"elbow pain from golf on the inside of the joint"* — return generic
-videos, and the good content stays buried inside videos whose titles never mention what
-you searched for.
+When using YouTube to intentionally learn or find something, I have wasted hours trying 
+to skip through videos trying to find one that's actually what I'm looking for. The most
+recent example of this was when trying to learn how to grow an app before the app is launched. 
+I tried a few keywords but still was mostly getting results of videos talking about how to grow
+post-launch (maybe I'm just bad at searching).
 
-**tubelens** fixes that: you describe what you want in plain English, and it searches
-YouTube, *reads the transcripts* of the videos it finds, and ranks them by what's actually
-said inside them. It writes you a short "here's what to do" brief and opens a
+But it got me thinking if a lightweight tool that was easy to build could search YouTube better 
+than me. That's how I landde on this project. Tubelens allows you to describe what you want in 
+plain English, and it searches YouTube, *reads the transcripts* of the videos it finds, and ranks 
+them by what's actually said inside them. It writes you a short "here's what to do" brief and opens a
 self-contained HTML report with clickable, jump-to-timestamp links.
 
-No server, no account, no database. It's a local command that writes a page and opens it —
-runs entirely on your own machine with your own API keys.
+No server, no account, no database. It's a local command that writes a page and opens it. 
+Runs entirely on your own machine with your own API keys.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -78,9 +79,10 @@ runs entirely on your own machine with your own API keys.
 
 1. Turns your one question into several YouTube searches (so you don't run them by hand).
 2. Pulls transcripts for the candidate videos.
-3. Ranks them by content in three passes — a cheap triage over all candidates, a deep read
-   of the most promising ones, then a final side-by-side comparison that sorts everything
-   into tiers (strong / partial / related) with a one-line reason each.
+3. Ranks them by content in three passes:
+      1. a cheap triage over all candidates
+      2. a deep read of the most promising ones
+      3. then a final side-by-side comparison that sorts everything into tiers (strong / partial / related) with a one-line reason each.
 4. Writes a short synthesized "playbook" from the best videos, with sources cited.
 5. Opens a self-contained HTML report in your browser with ranked cards and
    jump-to-timestamp links.
@@ -120,13 +122,14 @@ To get a local copy up and running, follow these steps.
      ```
   Free quota is 10,000 units/day ≈ 16 default runs/day. No billing required.
 
-**2. An LLM — use whatever provider you already have.** You are *not* locked to Anthropic.
+**2. An LLM — use whatever provider you already have.** I highly recommend checking out [this]([url](https://x.com/k2sbhai/status/2071981082594210054?s=46)) X post that walks you through how to get free access to a bunch of models through Nvidia 
+that you can use for use-cases like these and your own projects. 
 Set that provider's key and point `--model` at it:
 
 | Provider | Set this key | Example `--model` |
 |---|---|---|
 | **NVIDIA (free)** ⭐ | `NVIDIA_NIM_API_KEY` | `nvidia_nim/meta/llama-3.1-8b-instruct` |
-| Anthropic *(default)* | `ANTHROPIC_API_KEY` | `anthropic/claude-haiku-4-5` |
+| Anthropic | `ANTHROPIC_API_KEY` | `anthropic/claude-haiku-4-5` |
 | OpenAI | `OPENAI_API_KEY` | `openai/gpt-4o-mini` |
 | Google Gemini | `GEMINI_API_KEY` | `gemini/gemini-1.5-flash` |
 | Groq | `GROQ_API_KEY` | `groq/llama-3.1-8b-instant` |
@@ -134,22 +137,10 @@ Set that provider's key and point `--model` at it:
 | Cohere | `COHERE_API_KEY` | `cohere/command-r` |
 | **Local (Ollama)** | *none* | `ollama/llama3.1` |
 
-> ### 💸 Want to run it for free?
-> **NVIDIA gives free API access to hosted LLMs** — no payment method, no local setup:
-> 1. Sign up at <https://build.nvidia.com/> and generate an API key (free credits).
-> 2. `export NVIDIA_NIM_API_KEY="nvapi-..."`
-> 3. Run with `--model nvidia_nim/meta/llama-3.1-8b-instruct` (or any model listed on
->    build.nvidia.com, e.g. `nvidia_nim/deepseek-ai/deepseek-r1`).
->
-> Combined with the **free** YouTube key, this makes tubelens **$0 to run** on a
+
+> Combined with the **free** YouTube key, the **NVIDIA's free access to models**  makes tubelens **$0 to run** on a
 > good cloud model — no local GPU needed. (Free-tier limits are NVIDIA's; check their
 > site for current terms.)
-
-With a **local model** via [Ollama](https://ollama.com) you also need *no LLM key at all*.
-Any [litellm](https://docs.litellm.ai/docs/providers)-supported provider works, not just
-the rows above. (Prefer Anthropic? Create a key at
-<https://console.anthropic.com/settings/keys> — needs a payment method, but $5 of credit
-covers hundreds of runs.)
 
 > **Make your keys stick:** `export` only lasts until you close the terminal. To set them
 > permanently, add the export lines to your shell profile, then reopen your terminal:
@@ -209,7 +200,7 @@ Common flags (see `tubelens --help` for all):
 
 ### Cost
 
-Ranking is a judgment task that **cheap models do well** — you do not need a frontier
+Ranking is a judgment task that **cheap models do well**. You do not need a frontier
 model, and tubelens defaults to a cheap one on purpose.
 
 | Setup | Approx. cost per query |
@@ -252,8 +243,7 @@ full list of proposed features and known issues.
 <!-- CONTRIBUTING -->
 ## Contributing
 
-Contributions are what make the open-source community such an amazing place to learn and
-create. Any contributions you make are **greatly appreciated**.
+This is my first open-sourced project so if you want to make any contributions, that'd be **pretty cool and appreciated**.
 
 If you have a suggestion that would make this better, please fork the repo and create a
 pull request, or open an issue with the tag "enhancement". See
@@ -276,6 +266,7 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information
 
 <!-- CONTACT -->
 ## Contact
+Anirudh Chatterjee - [@anirudh_c5]([url](https://x.com/anirudh_c5)) (on X) - anirudhc2005@gmail.com
 
 Project Link:
 [https://github.com/MESSIDABOSS96/youtube-deep-search](https://github.com/MESSIDABOSS96/youtube-deep-search)
