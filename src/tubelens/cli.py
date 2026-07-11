@@ -20,7 +20,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import datetime as dt
+import getpass
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -29,12 +31,17 @@ from rich.console import Console
 
 from . import __version__
 from .config import (
+    CONFIG_FILE,
     Config,
     ConfigError,
     available_model_choices,
     deep_read_count,
     load_config,
     no_model_message,
+    required_key_for_model,
+    save_config_values,
+    save_key_to_shell_config,
+    shell_rc_file,
 )
 from .llm import warn_if_expensive
 from .models import CandidateStatus
@@ -369,6 +376,65 @@ def _pick_model_interactive() -> str | None:
     return choices[idx][0]
 
 
+def _offer_to_save_key(env_var: str) -> bool:
+    """On a TTY, offer to paste a missing API key and persist it to the shell rc file.
+
+    Opt-in and secret-safe: we never write a key the user didn't just hand us in this
+    prompt, the input is hidden (getpass), and pressing Enter skips without touching any
+    file. The pasted key is exported for the current run regardless of whether the file
+    write succeeds. Returns True if the key is now available in the environment.
+    """
+    if not sys.stdin.isatty():
+        return False
+    rc = shell_rc_file()
+    console.print(f"\n[bold]{env_var}[/bold] isn't set.")
+    if rc is not None:
+        console.print(
+            f"  Paste it to save it to [cyan]{rc}[/cyan] (loaded by every new terminal), "
+            "or press Enter to skip and set it yourself."
+        )
+    else:
+        console.print(
+            "  Paste it to use it for this run, or press Enter to skip. "
+            "[dim](couldn't detect a zsh/bash startup file to save it in)[/dim]"
+        )
+    try:
+        key = getpass.getpass("  > ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return False
+    if not key:
+        return False
+
+    # Make the key work for THIS run no matter what happens with the file.
+    os.environ[env_var] = key
+    if rc is None:
+        console.print(
+            f"[green]✓[/green] Using it for this run. To persist it, add "
+            f'`export {env_var}="..."` to your shell config.'
+        )
+        return True
+    try:
+        path, status = save_key_to_shell_config(env_var, key, rc)
+    except Exception as exc:  # noqa: BLE001 — a failed write must not break the run.
+        console.print(
+            f"[yellow]tubelens:[/yellow] couldn't write to {rc} ({exc}). "
+            "The key works for this run; add it manually to persist it."
+        )
+        return True
+    if status == "already_present":
+        console.print(
+            f"[green]✓[/green] There's already an export for {env_var} in {path} — left it "
+            f"untouched. Using the key you pasted for this run. "
+            f"[dim](if the saved one is outdated, edit {path})[/dim]"
+        )
+    else:
+        console.print(
+            f"[green]✓[/green] Saved to {path} — it'll load automatically in new terminals. "
+            f"[dim](keep this file out of any public git repo)[/dim]"
+        )
+    return True
+
+
 def _resolve_model(cfg) -> bool:
     """Ensure cfg.model is set — via the interactive picker (TTY) or a friendly error.
 
@@ -382,9 +448,12 @@ def _resolve_model(cfg) -> bool:
             cfg.model = chosen
             if not cfg.triage_model:
                 cfg.triage_model = chosen
+            # Persist the choice so the picker never reappears on the next run.
+            # (An explicit --model or TUBELENS_MODEL still overrides this file.)
+            save_config_values({"model": chosen})
             console.print(
                 f"[green]✓[/green] Using [cyan]{chosen}[/cyan]  "
-                f'[dim](tip: export TUBELENS_MODEL="{chosen}" to skip this next time)[/dim]'
+                f"[dim](saved to {CONFIG_FILE} — won't ask again)[/dim]"
             )
             return True
         if not available_model_choices():
@@ -415,6 +484,9 @@ def main() -> int:
         return 2
 
     # YouTube key is required no matter the model — check it before choosing a model.
+    # If it's missing on a TTY, offer to save it before falling back to the error.
+    if not cfg.youtube_api_key and _offer_to_save_key("YOUTUBE_API_KEY"):
+        cfg.youtube_api_key = os.environ.get("YOUTUBE_API_KEY", "")
     try:
         cfg.validate_youtube_key()
     except ConfigError as exc:
@@ -424,6 +496,9 @@ def main() -> int:
     # Resolve the model (interactive picker if unset), then confirm its key.
     if not _resolve_model(cfg):
         return 2
+    model_key = required_key_for_model(cfg.model)
+    if model_key and not os.environ.get(model_key):
+        _offer_to_save_key(model_key)
     try:
         cfg.validate_model_key()
     except ConfigError as exc:

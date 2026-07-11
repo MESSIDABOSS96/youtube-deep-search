@@ -8,6 +8,7 @@ when the chosen model's key is missing (SPEC §8, §9).
 from __future__ import annotations
 
 import os
+import re
 import shutil
 from pathlib import Path
 from typing import Any
@@ -150,10 +151,12 @@ class Config(BaseModel):
             raise ConfigError(
                 "YOUTUBE_API_KEY is not set. Create a YouTube Data API v3 key at "
                 "https://console.cloud.google.com/apis/credentials (enable "
-                "'YouTube Data API v3'), then:\n\n"
+                "'YouTube Data API v3'), then add this line to ~/.zshrc so it "
+                "persists across terminal restarts:\n\n"
                 "    export YOUTUBE_API_KEY=\"your-key\"\n\n"
-                "The YouTube key is always required — candidate videos come from "
-                "the Data API. See README §Setup."
+                "Then run `source ~/.zshrc` (or open a new terminal). The YouTube key "
+                "is always required — candidate videos come from the Data API. "
+                "See README §Setup."
             )
 
     def validate_model_key(self) -> None:
@@ -163,6 +166,8 @@ class Config(BaseModel):
             raise ConfigError(
                 f"The model '{self.model}' needs the {env_var} environment variable, "
                 f"but it is not set.\n\n"
+                f"Add this line to ~/.zshrc so it persists across terminal restarts, "
+                f"then run `source ~/.zshrc` (or open a new terminal):\n\n"
                 f"    export {env_var}=\"your-key\"\n\n"
                 "Or use a local model that needs no key, e.g. "
                 f"--model ollama/llama3.1. See README §Setup."
@@ -193,6 +198,94 @@ def _load_config_file() -> dict[str, Any]:
             return tomllib.load(f).get("tubelens", {})
     except Exception:
         return {}
+
+
+def _toml_value(val: Any) -> str:
+    """Serialize a scalar/string-list into TOML. Only the value types we ever store."""
+    if isinstance(val, bool):
+        return "true" if val else "false"
+    if isinstance(val, int):
+        return str(val)
+    if isinstance(val, list):
+        return "[" + ", ".join(_toml_value(v) for v in val) + "]"
+    # string: escape backslashes and quotes for a basic double-quoted TOML string
+    escaped = str(val).replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+def shell_rc_file() -> Path | None:
+    """The shell startup file we can safely add an `export` line to, or None.
+
+    Only zsh and bash use `export VAR=...` syntax, so we only offer to edit those. For
+    fish or an unknown shell we return None (the caller falls back to env-only + manual
+    instructions) rather than writing a line that wouldn't work.
+    """
+    shell = os.environ.get("SHELL", "")
+    home = Path("~").expanduser()
+    if "zsh" in shell:
+        return home / ".zshrc"
+    if "bash" in shell:
+        # macOS login shells read .bash_profile; Linux reads .bashrc. Prefer whichever
+        # already exists so the export lands where the shell will actually load it.
+        for name in (".bash_profile", ".bashrc"):
+            if (home / name).exists():
+                return home / name
+        return home / ".bashrc"
+    return None
+
+
+def _shell_escape(value: str) -> str:
+    """Escape a value for use inside a double-quoted shell string."""
+    for ch in ("\\", '"', "$", "`"):
+        value = value.replace(ch, "\\" + ch)
+    return value
+
+
+def save_key_to_shell_config(env_var: str, key: str, rc: Path | None = None) -> tuple[Path, str]:
+    """Append `export <env_var>="<key>"` to the shell rc file so it loads every session.
+
+    Returns (path, status) where status is:
+      - "written": a new export line was appended.
+      - "already_present": an export for this var already exists; left untouched to avoid
+        clobbering a possibly-different value (the caller handles the current run in memory).
+
+    Raises if there is no supported rc file or the write fails; the caller reports it.
+    """
+    rc = rc or shell_rc_file()
+    if rc is None:
+        raise ConfigError("no supported shell startup file (zsh/bash) detected")
+    if rc.exists():
+        try:
+            content = rc.read_text(encoding="utf-8")
+        except Exception:
+            content = ""
+        if re.search(rf"^\s*export\s+{re.escape(env_var)}=", content, re.M):
+            return rc, "already_present"
+    with rc.open("a", encoding="utf-8") as f:
+        f.write(f'\nexport {env_var}="{_shell_escape(key)}"\n')
+    return rc, "written"
+
+
+def save_config_values(updates: dict[str, Any]) -> None:
+    """Persist settings to ~/.config/tubelens/config.toml so they survive restarts.
+
+    Merges `updates` into the existing [tubelens] table (preserving any hand-added keys)
+    and rewrites the file. Best-effort: never raises — a config that can't be written
+    should not break the run (the value still applies to the current run in memory).
+
+    No secrets are written here. API keys live only in the environment (SPEC §8); this
+    file holds non-sensitive preferences like the chosen model.
+    """
+    try:
+        existing = _load_config_file()
+        merged = {**existing, **updates}
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        lines = ["[tubelens]"]
+        for key, val in merged.items():
+            lines.append(f"{key} = {_toml_value(val)}")
+        CONFIG_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except Exception:
+        pass
 
 
 def load_config(args: Any) -> Config:

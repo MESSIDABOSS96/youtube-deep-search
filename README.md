@@ -91,6 +91,24 @@ Runs entirely on your own machine with your own API keys.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+### Example Output
+
+Real, unedited output for the exact question that motivated this project —
+`tubelens "videos that talk about how to approach growth before your app is on the app store"`.
+It expanded into 7 searches, scanned 80 videos, read 17 transcripts, and sorted the top 15
+into tiers:
+
+![tubelens report — real run](images/report-example.png)
+
+Notice what the ranking does that a keyword search can't: the two **strong matches** at
+top actually cover *pre-launch* growth, while videos about *post-launch* marketing and app
+store optimization — the exact noise that makes this query hard to search — are demoted to
+**related** with a one-line note explaining how each diverges ("covers post-launch
+marketing, not pre-app store strategies"). Every card links straight to the relevant
+timestamp.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ### Built With
 
 - **Python 3.10+**
@@ -164,16 +182,24 @@ YouTube the only key you need.
 
 > **Choosing a model.** On first run tubelens shows a numbered menu of models for the
 > providers you have keys for — just press Enter for the recommended one, or pick a
-> number. To skip the menu, set your choice once:
-> `export TUBELENS_MODEL="anthropic/claude-haiku-4-5"` (or any model string). You can also
-> pass `--model <string>` on a single run.
+> number. **Your choice is saved** (to `~/.config/tubelens/config.toml`), so the menu
+> won't appear again on later runs. To change it later, set `TUBELENS_MODEL` or pass
+> `--model <string>` — both override the saved value.
 
-> **Make your settings stick:** `export` only lasts until you close the terminal. To set
-> them permanently, add these to your shell profile, then reopen your terminal:
-> ```sh
-> echo 'export YOUTUBE_API_KEY="your-key"' >> ~/.zshrc
-> echo 'export ANTHROPIC_API_KEY="your-key"' >> ~/.zshrc   # or your provider's variable
-> ```
+> **Make your keys stick.** API keys live in your shell environment, and a plain `export`
+> only lasts until you close the terminal. tubelens gives you two ways to make one
+> permanent:
+> - **Let tubelens save it:** if a key is missing when you run it, tubelens offers to save
+>   it — paste the key at the prompt (input is hidden) and it appends the `export` line to
+>   your shell profile (`~/.zshrc` or `~/.bashrc`). Press Enter to skip. It only ever
+>   writes a key you just pasted, and never adds a duplicate.
+> - **Or do it yourself:** add the lines to your shell profile, then reopen your terminal:
+>   ```sh
+>   echo 'export YOUTUBE_API_KEY="your-key"' >> ~/.zshrc
+>   echo 'export ANTHROPIC_API_KEY="your-key"' >> ~/.zshrc   # or your provider's variable
+>   ```
+>
+> Either way, keep your shell profile out of any public git repo — it now holds a secret.
 
 ### Installation
 
