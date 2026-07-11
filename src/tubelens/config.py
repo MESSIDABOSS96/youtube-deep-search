@@ -18,7 +18,8 @@ from pydantic import BaseModel, Field
 DEFAULT_RESULTS = 10
 DEFAULT_SCAN = 80
 MAX_SCAN = 200
-DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
+# No default model on purpose — the user must choose one explicitly. This keeps the tool
+# provider-neutral and stops it silently spending money on an assumed provider.
 
 CONFIG_DIR = Path("~/.config/tubelens").expanduser()
 CONFIG_FILE = CONFIG_DIR / "config.toml"
@@ -56,7 +57,7 @@ class Config(BaseModel):
     query: str
     results: int = DEFAULT_RESULTS
     scan: int = DEFAULT_SCAN
-    model: str = DEFAULT_MODEL
+    model: str = ""  # required in practice; load_config() rejects an empty model
     triage_model: str
     brief: bool = True
     clarify: bool = True
@@ -135,7 +136,16 @@ def load_config(args: Any) -> Config:
             return int(val)
         return val
 
-    model = pick("model", "TUBELENS_MODEL", DEFAULT_MODEL)
+    model = pick("model", "TUBELENS_MODEL", None)
+    if not model:
+        raise ConfigError(
+            "No model selected — tubelens has no default; you must choose one.\n\n"
+            "Pass --model, or set TUBELENS_MODEL to avoid typing it each time. Options:\n"
+            "  Free  : --model nvidia_nim/meta/llama-3.1-8b-instruct   (key: build.nvidia.com)\n"
+            "  Free  : --model ollama/llama3.1                         (local, no key)\n"
+            "  Paid  : --model anthropic/claude-haiku-4-5              (or openai/...)\n\n"
+            "See the provider table in the README for all options."
+        )
     triage_model = pick("triage_model", "TUBELENS_TRIAGE_MODEL", None) or model
     results = pick("results", "TUBELENS_RESULTS", DEFAULT_RESULTS, int)
     scan = pick("scan", "TUBELENS_SCAN", DEFAULT_SCAN, int)

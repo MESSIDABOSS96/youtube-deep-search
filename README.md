@@ -92,12 +92,12 @@ Runs entirely on your own machine with your own API keys.
 
 ### Built With
 
-* [![Python][Python-badge]][Python-url]
-* [![litellm][litellm-badge]][litellm-url] — one interface to any LLM provider
-* [![Anthropic][Anthropic-badge]][Anthropic-url] — default (any provider or local model works)
-* [![Jinja][Jinja-badge]][Jinja-url] — the HTML report
-* [![Rich][Rich-badge]][Rich-url] — terminal progress
-* [![Pydantic][Pydantic-badge]][Pydantic-url] — config + LLM output validation
+- **Python 3.10+**
+- **litellm** — one interface to any LLM provider (you choose which)
+- **youtube-transcript-api** — transcript retrieval
+- **Jinja2** — the HTML report
+- **Rich** — terminal progress
+- **Pydantic** — config + LLM output validation
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -123,9 +123,12 @@ To get a local copy up and running, follow these steps.
      ```
   Free quota is 10,000 units/day ≈ 16 default runs/day. No billing required.
 
-**2. An LLM — use whatever provider you already have.** I highly recommend checking out [this]([url](https://x.com/k2sbhai/status/2071981082594210054?s=46)) X post that walks you through how to get free access to a bunch of models through Nvidia 
-that you can use for use-cases like these and your own projects. 
-Set that provider's key and point `--model` at it:
+**2. An LLM — you must pick one; there is no default.** tubelens is provider-neutral and
+will not run until you tell it which model to use with `--model`. I highly recommend
+checking out [this X post](https://x.com/k2sbhai/status/2071981082594210054?s=46) that
+walks you through getting **free** access to a bunch of models through NVIDIA — perfect
+for use-cases like this and your own projects. Set your chosen provider's key and pass the
+matching `--model`:
 
 | Provider | Set this key | Example `--model` |
 |---|---|---|
@@ -138,17 +141,22 @@ Set that provider's key and point `--model` at it:
 | Cohere | `COHERE_API_KEY` | `cohere/command-r` |
 | **Local (Ollama)** | *none* | `ollama/llama3.1` |
 
+> Run tubelens without `--model` and it stops with these options — it never guesses a
+> provider for you. To skip typing `--model` every run, set
+> `export TUBELENS_MODEL="nvidia_nim/meta/llama-3.1-8b-instruct"` (or your choice).
 
-> Combined with the **free** YouTube key, the **NVIDIA's free access to models**  makes tubelens **$0 to run** on a
-> good cloud model — no local GPU needed. (Free-tier limits are NVIDIA's; check their
-> site for current terms.)
+> Combined with the **free** YouTube key, **NVIDIA's free access to models** makes tubelens
+> **$0 to run** on a good cloud model — no local GPU needed. (Free-tier limits are NVIDIA's;
+> check their site for current terms.)
 
-> **Make your keys stick:** `export` only lasts until you close the terminal. To set them
-> permanently, add the export lines to your shell profile, then reopen your terminal:
+> **Make your settings stick:** `export` only lasts until you close the terminal. To set
+> them permanently, add these to your shell profile, then reopen your terminal:
 > ```sh
 > echo 'export YOUTUBE_API_KEY="your-key"' >> ~/.zshrc
-> echo 'export ANTHROPIC_API_KEY="your-key"' >> ~/.zshrc   # or your provider's variable
+> echo 'export NVIDIA_NIM_API_KEY="your-key"' >> ~/.zshrc      # or your provider's variable
+> echo 'export TUBELENS_MODEL="nvidia_nim/meta/llama-3.1-8b-instruct"' >> ~/.zshrc  # your model
 > ```
+> With `TUBELENS_MODEL` set, you can skip `--model` on every run.
 
 ### Installation
 
@@ -174,8 +182,11 @@ tubelens --version
 <!-- USAGE -->
 ## Usage
 
+Pass your chosen model with `--model` (or set `TUBELENS_MODEL` once, as above):
+
 ```sh
-tubelens "how to start growth work for an app before it's on the app store"
+tubelens --model nvidia_nim/meta/llama-3.1-8b-instruct \
+  "how to start growth work for an app before it's on the app store"
 ```
 
 You'll see progress in the terminal (expanding your query into searches → fetching
@@ -193,7 +204,7 @@ Common flags (see `tubelens --help` for all):
 |---|---|
 | `--results N` | how many top videos to deep-read; all are shown, tiered by match strength (default 10) |
 | `--scan N` | how many candidate videos to examine (default 80) |
-| `--model MODEL` | LLM for ranking/synthesis, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4o-mini`, `ollama/llama3.1` |
+| `--model MODEL` | **Required.** Which LLM to use, e.g. `nvidia_nim/meta/llama-3.1-8b-instruct`, `ollama/llama3.1`, `anthropic/claude-haiku-4-5` |
 | `--no-brief` | skip the synthesized playbook |
 | `--no-clarify` | never ask clarifying questions |
 
@@ -201,15 +212,16 @@ Common flags (see `tubelens --help` for all):
 
 ### Cost
 
-Ranking is a judgment task that **cheap models do well**. You do not need a frontier
-model, and tubelens defaults to a cheap one on purpose.
+Ranking is a judgment task that **cheap models do well** — you do not need a frontier
+model. The free NVIDIA and Ollama options work great; if you use a paid provider, a cheap
+model is the right choice.
 
 | Setup | Approx. cost per query |
 |---|---|
 | **NVIDIA free tier** (`nvidia_nim/...`) | **$0.00** |
 | Local model via Ollama | $0.00 |
-| Default cheap cloud model | ~$0.01–0.05 |
-| Frontier model (not recommended) | ~10–30× the default, for little quality gain |
+| A cheap cloud model (e.g. Haiku, GPT-4o-mini) | ~$0.01–0.05 |
+| Frontier model (not recommended) | ~10–30× a cheap model, for little quality gain |
 
 If you pass a known-expensive model, tubelens prints a one-line heads-up and proceeds.
 
@@ -296,15 +308,3 @@ service and should not be run as one.** tubelens uses no YouTube branding or log
 [license-shield]: https://img.shields.io/github/license/MESSIDABOSS96/youtube-deep-search.svg?style=for-the-badge
 [license-url]: https://github.com/MESSIDABOSS96/youtube-deep-search/blob/main/LICENSE
 [product-screenshot]: images/screenshot.png
-[Python-badge]: https://img.shields.io/badge/Python_3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white
-[Python-url]: https://www.python.org/
-[litellm-badge]: https://img.shields.io/badge/litellm-1A1A1A?style=for-the-badge&logo=lightning&logoColor=white
-[litellm-url]: https://docs.litellm.ai/
-[Anthropic-badge]: https://img.shields.io/badge/Anthropic_Claude-D97757?style=for-the-badge&logo=anthropic&logoColor=white
-[Anthropic-url]: https://www.anthropic.com/
-[Jinja-badge]: https://img.shields.io/badge/Jinja-B41717?style=for-the-badge&logo=jinja&logoColor=white
-[Jinja-url]: https://jinja.palletsprojects.com/
-[Rich-badge]: https://img.shields.io/badge/Rich-FADE2A?style=for-the-badge&logo=python&logoColor=black
-[Rich-url]: https://github.com/Textualize/rich
-[Pydantic-badge]: https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white
-[Pydantic-url]: https://docs.pydantic.dev/

@@ -61,7 +61,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--scan", type=int, default=None,
         help="max candidate videos to scan (default 80, cap 200)",
     )
-    p.add_argument("--model", default=None, help="LLM for deep rank + synthesis, litellm format")
+    p.add_argument(
+        "--model", default=None,
+        help="LLM for deep rank + synthesis, litellm format (REQUIRED — no default; "
+        "e.g. nvidia_nim/meta/llama-3.1-8b-instruct, ollama/llama3.1, anthropic/claude-haiku-4-5)",
+    )
     p.add_argument(
         "--triage-model", default=None, dest="triage_model",
         help="LLM for stage-1 triage (default: same as --model)",
