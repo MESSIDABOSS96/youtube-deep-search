@@ -203,12 +203,32 @@ Single LLM call that receives the user query and returns structured JSON:
 ### 6.3 Transcript fetch
 
 - `youtube-transcript-api` (unofficial; see §11 ToS note), preferring manual captions,
-  falling back to auto-generated, in `--lang` then any available language with
-  translation to `--lang` if the library supports it.
-- Parallelize with a bounded worker pool (~8 concurrent) and per-video timeout (~10s).
+  falling back to auto-generated, in `--lang` then any available language.
 - Keep segment timestamps — they power the "jump to 4:12" links.
 - Videos with no transcript: mark `no_transcript`, exclude from ranking, include in the
   coverage table (trust requirement).
+
+**Rate-limit safety (required).** The transcript endpoint is unofficial and YouTube
+IP-throttles bursts — a heavy user (or anyone testing repeatedly) can get their own IP
+temporarily blocked. Three defenses, none of which require the user to change networks:
+
+1. **Cross-run cache** (`cache.py`, `~/.cache/tubelens/transcripts/`): each video's
+   transcript is fetched at most once ever per language. Positive results are kept
+   forever; genuine "no captions" results are cached with a TTL (captions can be added
+   later); **rate-limit failures are never cached** (that would poison the cache with
+   false negatives). Repeating a query re-downloads nothing.
+2. **Polite fetching**: low concurrency (~3) plus a small randomized delay between
+   network fetches, so the pattern doesn't look like a scraper burst. Politeness is the
+   defensible posture — it reduces pressure on YouTube rather than evading it.
+3. **Circuit breaker + honest error**: the first time YouTube returns an IP-block
+   (detected by exception type/message), stop making further transcript requests
+   immediately (so the block isn't deepened), mark the un-fetched videos
+   `skipped: rate-limited`, proceed with whatever was cached/fetched, and tell the user
+   the truth — a temporary IP rate-limit that clears on its own — never a misleading
+   "no captions." `fetch_transcripts` returns a `rate_limited` flag the CLI surfaces.
+
+Power-user escape hatch (documented in the README, not a default): `youtube-transcript-api`
+supports routing through the user's own proxy for those who hit limits often.
 
 ### 6.4 Stage-1 triage (efficiency requirement)
 
@@ -328,7 +348,8 @@ One LLM call over the top ~6 deep-read results' `key_points` + `why` + metadata:
      not pre-launch`.
 5. **Everything scanned** (trust requirement, collapsed by default):
    a table of *all* candidates — title (linked), channel, triage score + 5-word reason,
-   and status (`deep-read`, `triaged out`, `no transcript`, `filtered: short`).
+   and status (`deep-read`, `triaged out`, `no transcript`, `skipped: rate-limited`,
+   `filtered: short/live/lang`).
    This is how a skeptical user verifies nothing they'd have found manually was hidden.
 6. **Footer**: models used, run duration, generated-at timestamp, tool name + repo link.
 
@@ -380,6 +401,7 @@ visual minimalism.
 | Missing `YOUTUBE_API_KEY` / LLM key | Exit immediately with setup instructions incl. exact URL to create the key |
 | YouTube quota exceeded | Clear message: quota resets midnight PT; suggest `--scan` reduction |
 | Individual transcript fetch fails | Skip video, mark in coverage table, continue |
+| YouTube IP-blocks transcript requests | Trip the circuit breaker: stop fetching, mark remaining `skipped: rate-limited`, proceed with cached/fetched, print an honest temporary-block message (§6.3) |
 | < 5 candidates with transcripts | Proceed but warn prominently in terminal and report |
 | Zero search results | Say so; show the expanded queries so the user can judge; suggest rephrasing |
 | LLM call fails (one item) | One retry; then drop that item with a terminal warning |
@@ -411,8 +433,9 @@ tubelens/
 │   ├── cli.py                # arg parsing, progress display, orchestration
 │   ├── config.py             # env/flags/config-file resolution; provider→key map
 │   ├── llm.py                # litellm wrapper: JSON complete + validate + one retry
+│   ├── cache.py              # cross-run transcript cache (~/.cache/tubelens/)
 │   ├── youtube.py            # search.list, videos.list (≤50 ids/batch), dedupe, filters
-│   ├── transcripts.py        # parallel fetch, timestamp-preserving chunking
+│   ├── transcripts.py        # cache-first polite fetch, rate-limit circuit breaker
 │   ├── ranking.py            # clarify/expand, triage, deep rank, comparative rank
 │   ├── synthesis.py          # playbook generation
 │   ├── report.py             # Jinja2 render + browser open
@@ -424,6 +447,7 @@ tubelens/
     ├── test_youtube.py       # dedupe, interleave, filters, ≤50-id batching (mocked API)
     ├── test_ranking.py       # digest, JSON validation/retry, comparative rank (mocked LLM)
     ├── test_report.py        # renders golden fixture data → valid self-contained HTML
+    ├── test_transcripts.py   # cache hit, circuit breaker, block-not-cached (mocked)
     ├── test_pipeline.py      # full pipeline wiring, everything mocked
     └── fixtures/             # canned API/LLM responses
 ```
@@ -444,7 +468,6 @@ trade dress — visual *familiarity* of card layout is fine, brand imitation is 
 ## 12. v2 parking lot (do not build in v1)
 
 - Whisper fallback for uncaptioned videos (via yt-dlp audio download).
-- Cross-run transcript/result cache (`~/.cache/tubelens/`).
 - `--refine` interactive loop: adjust query from the results page.
 - Local web UI wrapper.
 - Channel/date/duration filter flags.

@@ -70,7 +70,7 @@ def _fmt_views(views) -> str:
 def _status_class(status: CandidateStatus) -> str:
     if status == CandidateStatus.DEEP_READ:
         return "status-deep"
-    if status in (CandidateStatus.NO_TRANSCRIPT,):
+    if status in (CandidateStatus.NO_TRANSCRIPT, CandidateStatus.RATE_LIMITED):
         return "status-no"
     return "status-out"
 

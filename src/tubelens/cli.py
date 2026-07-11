@@ -166,13 +166,24 @@ async def _run_pipeline(cfg: Config) -> int:
 
     # ── Stage 3: transcripts ─────────────────────────────────────────────
     with console.status("[cyan]Fetching transcripts…[/cyan]"):
-        candidates = await fetch_transcripts(candidates, cfg.lang)
+        candidates, rate_limited = await fetch_transcripts(candidates, cfg.lang)
     with_transcript = [c for c in candidates if c.has_transcript]
     console.print(
         f"[green]✓[/green] {len(with_transcript)}/{len(candidates)} transcripts retrieved"
     )
 
-    if len(with_transcript) < 5:
+    if rate_limited:
+        # The honest message: don't blame missing captions, and don't keep hammering.
+        console.print(
+            "[yellow]tubelens:[/yellow] YouTube is rate-limiting transcript requests from "
+            "your IP (too many in a short window). tubelens stopped requesting to avoid "
+            "making it worse and used what it already had (including cached transcripts).\n"
+            "  This is temporary — it usually lifts within minutes to a couple of hours. "
+            "Re-run later, or use a smaller --scan. Cached transcripts are reused, so "
+            "repeating the same query is cheap. See the README (Troubleshooting) for a "
+            "proxy option if you hit this often."
+        )
+    elif len(with_transcript) < 5:
         console.print(
             "[yellow]tubelens:[/yellow] warning — fewer than 5 candidates have transcripts. "
             "Ranking quality will be limited."

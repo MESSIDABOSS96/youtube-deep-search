@@ -249,16 +249,30 @@ If you pass a known-expensive model, tubelens prints a one-line heads-up and pro
 | "YOUTUBE_API_KEY is not set" | You skipped a prerequisite, or opened a new terminal without adding the key to `~/.zshrc` |
 | "quota exceeded" | Free YouTube quota resets at midnight Pacific; or lower usage with `--scan 40` |
 | Few/zero transcripts retrieved | Rare-topic videos may lack captions; try a broader query |
+| "YouTube is rate-limiting … from your IP" | Temporary — usually lifts in minutes to a couple of hours. Just re-run later (see below) |
 | It asks a clarifying question you don't want | Press Enter to skip it, or pass `--no-clarify` |
 | Report didn't open | It's saved as `tubelens-<query>-<time>.html` in your current folder — open it manually |
+
+**Transcript rate limits.** YouTube's transcript endpoint is unofficial and it throttles
+bursts of requests by IP. tubelens is built to stay well under that line: it fetches
+politely (few requests at a time, slightly spaced out), **caches every transcript it
+fetches** in `~/.cache/tubelens/` so repeating a query re-downloads nothing, and if
+YouTube does start blocking, it **stops immediately** rather than digging in, and tells
+you plainly. A block is temporary and clears on its own — you never need to change
+networks or use a hotspot.
+
+If you are an unusually heavy user and hit limits often, `youtube-transcript-api` (which
+tubelens uses) supports routing transcript requests through **your own proxy** — see its
+[proxy docs](https://github.com/jdepoix/youtube-transcript-api#working-around-ip-bans-requestblocked-or-ipblocked-exception).
+This is optional, usually costs money, and most users will never need it.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- ROADMAP -->
 ## Roadmap
 
+- [x] Cross-run transcript cache + polite fetching + rate-limit circuit breaker
 - [ ] Whisper fallback to transcribe videos that have no captions
-- [ ] Cross-run cache for transcripts and results
 - [ ] `--refine` interactive loop to adjust the query from the results page
 - [ ] Channel / date / duration filter flags
 - [ ] Embedding-based triage as a cheaper stage-1 alternative

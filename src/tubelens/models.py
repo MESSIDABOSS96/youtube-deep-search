@@ -20,6 +20,7 @@ class CandidateStatus(str, Enum):
     DEEP_READ = "deep-read"
     TRIAGED_OUT = "triaged out"
     NO_TRANSCRIPT = "no transcript"
+    RATE_LIMITED = "skipped: rate-limited"
     FILTERED_SHORT = "filtered: short"
     FILTERED_LIVE = "filtered: live"
     FILTERED_LANG = "filtered: lang"

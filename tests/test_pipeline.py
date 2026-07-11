@@ -122,7 +122,7 @@ def _run_mocked_pipeline(tmp_path):
         for c in candidates:
             if c.status == CandidateStatus.FOUND:
                 c.transcript = [TranscriptSegment(start=0.0, text="segment")]
-        return candidates
+        return candidates, False  # (candidates, rate_limited)
 
     with patch("httpx.AsyncClient.get", new=fake_get), \
          patch("tubelens.ranking.complete_json", new=fake_complete_json), \
